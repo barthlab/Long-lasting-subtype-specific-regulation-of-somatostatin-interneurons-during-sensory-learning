@@ -8,7 +8,9 @@ Analysis codes for paper:
 
 ## Dataset access
 
-Please download two-photon imaging data from the following link:  [Link](https://figshare.com/s/aae46645036a06534bed?file=49596798)
+Please download two-photon imaging data from the following link:  [Link](https://figshare.com/s/aae46645036a06534bed?file=49596798).
+
+You can also find the dataset with the following DOI: 10.1184/R1/27098272, after our dataset is approved by CMU KiltHub.
 
 ## Reproduce the results
 
@@ -31,8 +33,7 @@ The folder structure should look like this:
 
 ```
 
-## Dependencies
-
+## Python Dependencies
 
 - `Python 3.11`
 - `numpy`
@@ -45,4 +46,5 @@ The folder structure should look like this:
 - `tqdm`
 - `xlwt`
 - `xlrd`
+
 
