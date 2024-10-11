@@ -8,9 +8,9 @@ Analysis codes for paper:
 
 ## Dataset access
 
-Please download two-photon imaging data from the following link:  [Link](https://figshare.com/s/aae46645036a06534bed?file=49596798).
+Please download two-photon imaging data from the following link:  [Link](https://doi.org/10.1184/R1/27098272.v1).
 
-You can also find the dataset with the following DOI: 10.1184/R1/27098272, after our dataset is approved by CMU KiltHub.
+You can also find the dataset with the following DOI: 10.1184/R1/27098272.
 
 ## Reproduce the results
 
