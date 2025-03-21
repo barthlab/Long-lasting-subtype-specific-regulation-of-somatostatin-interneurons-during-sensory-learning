@@ -1,11 +1,10 @@
 from dataclasses import dataclass, field, MISSING
 from typing import List, Callable, Optional, Dict
 from functools import cached_property
-
 import numpy as np
 from scipy.ndimage import percentile_filter
-from utils import *
-from config import *
+from src.basic.utils import *
+from src.config import *
 import os
 import os.path as path
 
@@ -341,6 +340,7 @@ class FOV:
         -> Cell x Session 
         -> Cell x (Session per day x Day)
         """
+        self.cell_sessions = []
         for extract_day in valid_days:
             day_order = days_in_data.index(extract_day)
             for session_order_in_day in range(self.num_session_per_day):
@@ -368,19 +368,23 @@ class FOV:
                     )
 
                     # make final cell session
-                    self.cell_sessions.append(CellSession(
-                        cell_id=cell_index,
-                        day_id=extract_day,
-                        session_id=num_session_before,
-                        exp_id=self.exp_id,
-                        mice_id=self.mice_id,
-                        fov_id=self.fov_id,
+                    self.cell_sessions.append(
+                        CellSession(
+                            cell_id=cell_index,
+                            day_id=extract_day,
+                            session_id=num_session_before,
+                            exp_id=self.exp_id,
+                            mice_id=self.mice_id,
+                            fov_id=self.fov_id,
 
-                        fluorescence=new_fluorescence,
-                        stims=new_stims
-                    ))
+                            fluorescence=new_fluorescence,
+                            stims=new_stims
+                        ))
 
         # split cells and sessions
+        """
+        TODO
+        """
 
     @cached_property
     def data_path(self) -> str:
@@ -396,7 +400,9 @@ class FOV:
 class Mice:
     exp_id: str
     mice_id: str
+
     fovs: List[FOV] = field(default=None, repr=False)
+    cell_sessions: List[CellSession] = field(init=False, repr=False)
 
     # cells: List[Cell] = field(default=None, repr=False)
 
@@ -404,6 +410,7 @@ class Mice:
         assert self.exp_id in EXP_LIST
 
         # Load fovs
+        self.fovs, self.cell_sessions = [], []
         for fov_name in os.listdir(self.data_path):
             assert fov_name[:3] == "FOV"
             fov_id = int(fov_name[3:])
@@ -412,6 +419,10 @@ class Mice:
                 mice_id=self.mice_id,
                 fov_id=fov_id,
             )
+            self.fovs.append(new_fov)
+
+            # append child dataclasses
+            self.cell_sessions += new_fov.cell_sessions
 
     @cached_property
     def data_path(self) -> str:
@@ -423,5 +434,3 @@ class Mice:
         return int(self.mice_id[1:])
 
 
-if __name__ == "__main__":
-    mitten = Mice(exp_id="Calb2_SAT", mice_id="M081")

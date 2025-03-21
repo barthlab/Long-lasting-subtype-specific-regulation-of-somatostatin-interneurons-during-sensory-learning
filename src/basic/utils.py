@@ -2,7 +2,7 @@ import pandas as pd
 from scipy.io import loadmat, savemat
 from typing import Optional
 import numpy as np
-from config import *
+from src.config import *
 import scipy.signal as signal
 
 

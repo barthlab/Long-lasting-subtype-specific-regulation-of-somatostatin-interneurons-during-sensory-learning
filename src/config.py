@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import os.path as path
-from terminology import *
+from src.basic.terminology import *
 
 
 # average policy

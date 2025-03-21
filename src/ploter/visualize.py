@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as ptchs
 import numpy as np
-from data_manager import *
-from utils import *
-from config import *
+from src.data_manager import *
+from src.basic.utils import *
+from src.config import *
 import os
 import os.path as path
 
