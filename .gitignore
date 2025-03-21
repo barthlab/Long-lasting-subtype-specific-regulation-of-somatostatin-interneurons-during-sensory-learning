@@ -41,3 +41,6 @@ debug/
 # Large data file
 .mat
 .xlsx
+.jpg
+data/
+figure/archive_figure/
