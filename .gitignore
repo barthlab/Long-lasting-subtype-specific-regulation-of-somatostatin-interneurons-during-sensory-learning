@@ -39,8 +39,8 @@ release/
 debug/
 
 # Large data file
-.mat
-.xlsx
-.jpg
+*.mat
+*.xlsx
+*.jpg
 data/
 figure/archive_figure/
