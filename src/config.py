@@ -1,19 +1,21 @@
 import numpy as np
 import os
 import os.path as path
+
 from src.basic.terminology import *
 
 
 # average policy
 REPLACE_BAD_VALUE_FLAG = False
 DEBUG_FLAG = True
+FIGURE_SHOW_FLAG = 0
 
 
 # path to data
 ROOT_PATH = (r"C:\Users\maxyc\PycharmProjects\Long-lasting-subtype-specific-regulation-"
              r"of-somatostatin-interneurons-during-sensory-learning")
 CALCIUM_DATA_PATH = "data/Calcium imaging"
-
+FIGURE_PATH = "figures"
 
 # data lost
 LOST_DATA = {

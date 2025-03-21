@@ -3,10 +3,11 @@ from typing import List, Callable, Optional, Dict
 from functools import cached_property
 import numpy as np
 from scipy.ndimage import percentile_filter
-from src.basic.utils import *
-from src.config import *
 import os
 import os.path as path
+
+from src.basic.utils import *
+from src.config import *
 
 
 @dataclass
@@ -168,19 +169,19 @@ class SpontBlock:
     block_len: float = field(init=False)
 
     fluorescence: TimeSeries = field(repr=False)
-    baseline: TimeSeries = field(repr=False)
+    baseline_v: float = field(init=False)
     df_f0: TimeSeries = field(init=False, repr=False)
     stims: Events = field(repr=False)
 
     def __post_init__(self):
         assert self.exp_id in EXP_LIST
         assert (self.block_type in (BlockType.PreBlock, BlockType.PostBlock)) == (self.block_id is None)
-        assert self.fluorescence.origin_t == self.baseline.origin_t
         assert self.stims.num_events == 0
 
         # calculate df/f0
+        self.baseline_v = np.percentile(self.fluorescence.v, q=GLOBAL_BASELINE_PERCENTILE)
         self.df_f0 = TimeSeries(
-            v=(self.fluorescence.v - self.baseline.v) / self.baseline.v,
+            v=(self.fluorescence.v - self.baseline_v) / self.baseline_v,
             t=self.fluorescence.t,
             drop=self.fluorescence.drop,
             origin_t=self.fluorescence.origin_t
@@ -264,7 +265,6 @@ class CellSession:
                 block_type=BlockType.PreBlock,
                 block_id=None,
                 fluorescence=self.fluorescence.segment(end_t=self.stims.t[0] + BLOCK_PRE_TRIAL),
-                baseline=self.baseline.segment(end_t=self.stims.t[0] + BLOCK_PRE_TRIAL),
                 stims=self.stims.segment(end_t=self.stims.t[0] + BLOCK_PRE_TRIAL),
             ),]
         for block_id, stim_time in enumerate(self.stims.t):  # type: int, float
@@ -275,7 +275,6 @@ class CellSession:
                 block_type=BlockType.InterBlock,
                 block_id=block_id,
                 fluorescence=self.fluorescence.segment(start_t=stim_time+BLOCK_POST_TRIAL, end_t=block_end_time),
-                baseline=self.baseline.segment(start_t=stim_time+BLOCK_POST_TRIAL, end_t=block_end_time),
                 stims=self.stims.segment(start_t=stim_time+BLOCK_POST_TRIAL, end_t=block_end_time),
             ))
         self.spont_blocks.append(SpontBlock(
@@ -283,7 +282,6 @@ class CellSession:
                 block_type=BlockType.PostBlock,
                 block_id=None,
                 fluorescence=self.fluorescence.segment(start_t=self.stims.t[-1] + LAST_BLOCK_LEN),
-                baseline=self.baseline.segment(start_t=self.stims.t[-1] + LAST_BLOCK_LEN),
                 stims=self.stims.segment(start_t=self.stims.t[-1] + LAST_BLOCK_LEN),
             ),)
 

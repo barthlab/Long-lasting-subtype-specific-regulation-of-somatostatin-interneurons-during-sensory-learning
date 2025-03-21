@@ -2,8 +2,9 @@ import pandas as pd
 from scipy.io import loadmat, savemat
 from typing import Optional
 import numpy as np
-from src.config import *
 import scipy.signal as signal
+
+from src.config import *
 
 
 def read_xlsx(table_dir: str, header: None | int) -> dict[int, np.ndarray]:
