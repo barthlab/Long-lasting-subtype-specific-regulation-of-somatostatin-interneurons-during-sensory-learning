@@ -1,0 +1,12 @@
+M17 - M86: Puff/Blank
+After M86: real/fake
+
+M97 / M98 / M101 / M104 only have 1 session per day.
+
+lost data:
+M087 - Matt FOV2 FOV3 FOV4: SAT9 SAT10
+M088 - Matt FOV1 FOV2 FOV3: SAT7
+M017 FOV1: ACC1
+
+
+M087, M088: Matt's recordings
