@@ -43,4 +43,4 @@ debug/
 *.xlsx
 *.jpg
 data/
-figure/archive_figure/
+figures/archive_figure/
