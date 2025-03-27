@@ -10,6 +10,9 @@ from src.basic.utils import *
 from src.config import *
 
 
+###################
+# data container ##
+###################
 @dataclass
 class TimeSeries:
     v: np.ndarray
@@ -55,7 +58,7 @@ class Events:
     def __post_init__(self):
         self.t = np.array(self.t)
         assert self.t.ndim == 1, "time must be 1-d array"
-        assert len(self.t) == len(self.label), "time and label have different length"
+        assert len(self.t) == len(self.label), f"time {len(self.t)} and label {len(self.label)} have different length"
         if self.origin_t is None and len(self.t) > 0:
             self.origin_t = self.t[0]
 
@@ -101,7 +104,7 @@ def load_2p(mat_dict: dict) -> (np.ndarray, np.ndarray, np.ndarray):
             start_frame = corrupted_frames[block_start]
             block_len = i - block_start + 1
 
-            if (block_len <= FRAME_INTERPOLATE_THRESHOLD) and (cur_frame < total_frames):
+            if (block_len <= FRAME_INTERPOLATE_THRESHOLD) and (cur_frame < total_frames-1):
                 interp = np.linspace(0, 1, block_len + 2)[np.newaxis, 1:-1]
                 F[:, start_frame:cur_frame + 1] = (interp * F[:, cur_frame + 1, np.newaxis] +
                                                    (1 - interp) * F[:, start_frame - 1, np.newaxis])
@@ -153,6 +156,11 @@ class Trial:
         # calculate drop
         self.drop_flag = np.sum(self.fluorescence.drop) > 0
 
+    @cached_property
+    def cell_uid(self):
+        return CellUID(cell_id=self.cell_id, exp_id=self.exp_id,
+                       mice_id=self.mice_id, fov_id=self.fov_id)
+
 
 @dataclass
 class SpontBlock:
@@ -190,6 +198,11 @@ class SpontBlock:
         # calculate block length
         self.block_start = float(self.fluorescence.t[0])
         self.block_len = float(self.fluorescence.t[-1] - self.fluorescence.t[0])  # s
+
+    @cached_property
+    def cell_uid(self):
+        return CellUID(cell_id=self.cell_id, exp_id=self.exp_id,
+                       mice_id=self.mice_id, fov_id=self.fov_id)
 
 
 @dataclass
@@ -266,24 +279,84 @@ class CellSession:
                 block_id=None,
                 fluorescence=self.fluorescence.segment(end_t=self.stims.t[0] + BLOCK_PRE_TRIAL),
                 stims=self.stims.segment(end_t=self.stims.t[0] + BLOCK_PRE_TRIAL),
-            ),]
+            ), ]
         for block_id, stim_time in enumerate(self.stims.t):  # type: int, float
             block_end_time = stim_time + LAST_BLOCK_LEN if block_id == self.stims.num_events - 1 else (
-                self.stims.t[block_id+1] + BLOCK_PRE_TRIAL)
+                    self.stims.t[block_id + 1] + BLOCK_PRE_TRIAL)
             self.spont_blocks.append(SpontBlock(
                 **kwargs,
                 block_type=BlockType.InterBlock,
                 block_id=block_id,
-                fluorescence=self.fluorescence.segment(start_t=stim_time+BLOCK_POST_TRIAL, end_t=block_end_time),
-                stims=self.stims.segment(start_t=stim_time+BLOCK_POST_TRIAL, end_t=block_end_time),
+                fluorescence=self.fluorescence.segment(start_t=stim_time + BLOCK_POST_TRIAL, end_t=block_end_time),
+                stims=self.stims.segment(start_t=stim_time + BLOCK_POST_TRIAL, end_t=block_end_time),
             ))
         self.spont_blocks.append(SpontBlock(
-                **kwargs,
-                block_type=BlockType.PostBlock,
-                block_id=None,
-                fluorescence=self.fluorescence.segment(start_t=self.stims.t[-1] + LAST_BLOCK_LEN),
-                stims=self.stims.segment(start_t=self.stims.t[-1] + LAST_BLOCK_LEN),
-            ),)
+            **kwargs,
+            block_type=BlockType.PostBlock,
+            block_id=None,
+            fluorescence=self.fluorescence.segment(start_t=self.stims.t[-1] + LAST_BLOCK_LEN),
+            stims=self.stims.segment(start_t=self.stims.t[-1] + LAST_BLOCK_LEN),
+        ), )
+
+    @cached_property
+    def cell_uid(self):
+        return CellUID(cell_id=self.cell_id, exp_id=self.exp_id,
+                       mice_id=self.mice_id, fov_id=self.fov_id)
+
+
+#####################
+## abstract docker ##
+#####################
+@dataclass
+class Image:
+    exp_id: str
+
+    dataset: List[CellSession] = field(repr=False)
+
+    cells_uid: List[CellUID] = field(init=False)
+    days: List[SatDay | PseDay] = field(init=False)
+
+    def __post_init__(self):
+        self.cells_uid, self.days = [], []
+        for single_cellsession in self.dataset:
+            self.cells_uid.append(single_cellsession.cell_uid)
+            self.days.append(single_cellsession.day_id)
+        self.cells_uid = list(set(self.cells_uid))
+        self.days = sorted(list(set(self.days)), key=lambda x: (0 if isinstance(x, SatDay) else 1, x.value))
+        self.cells_uid.sort()
+
+    @property
+    def trials(self) -> List[Trial]:
+        return sum([single_cs.trials for single_cs in self.dataset], [])
+
+    @property
+    def spont_blocks(self) -> List[SpontBlock]:
+        return sum([single_cs.spont_blocks for single_cs in self.dataset], [])
+
+    def cell_split(self) -> Dict[CellUID, "Image"]:
+        split_dict = {single_uid: [] for single_uid in self.cells_uid}
+        for single_cs in self.dataset:
+            split_dict[single_cs.cell_uid].append(single_cs)
+        for single_uid in self.cells_uid:
+            split_dict[single_uid] = Image(exp_id=self.exp_id, dataset=split_dict[single_uid])
+        return split_dict
+
+    def day_split(self) -> Dict[SatDay | PseDay, "Image"]:
+        split_dict = {single_day: [] for single_day in self.days}
+        for single_cs in self.dataset:
+            split_dict[single_cs.day_id].append(single_cs)
+        for single_day in self.days:
+            split_dict[single_day] = Image(exp_id=self.exp_id, dataset=split_dict[single_day])
+        return split_dict
+
+    def select(self, **criteria) -> "Image":
+        def matches(one_data: CellSession) -> bool:
+            return all(getattr(one_data, key, None) == value if not callable(value) else
+                       value(getattr(one_data, key, None))
+                       for key, value in criteria.items())
+        sub_dataset = [d for d in self.dataset if matches(d)]
+        return Image(exp_id=self.exp_id, dataset=sub_dataset)
+
 
 
 @dataclass
@@ -304,7 +377,8 @@ class FOV:
                           f"Arduino time point P6_{self.fov_id}.xlsx", "Fall.mat"):
             if not path.exists(path.join(self.data_path, file_name)):
                 print(f"File {path.join(self.data_path, file_name)} not found!")
-        print(f"Loading {self.exp_id} M{self.mice_id} FOV{self.fov_id}")
+        if DEBUG_FLAG:
+            print(f"Loading {self.exp_id} {self.mice_id} FOV{self.fov_id}")
 
         # data load
         total_fluorescence, dropped_frames, cell_indices = load_2p(loadmat(path.join(self.data_path, "Fall.mat")))
@@ -339,29 +413,43 @@ class FOV:
         -> Cell x (Session per day x Day)
         """
         self.cell_sessions = []
-        for extract_day in valid_days:
+        for extract_day in valid_days:  # type: PseDay | SatDay
             day_order = days_in_data.index(extract_day)
             for session_order_in_day in range(self.num_session_per_day):
+                if DEBUG_FLAG:
+                    print(f"Parsing {self.exp_id} {self.mice_id} FOV{self.fov_id} "
+                          f"Day{extract_day.value} #{session_order_in_day}")
                 num_session_before = self.num_session_per_day * day_order + session_order_in_day
                 session_start_frame = num_session_before * SESSION_FRAMES_2P
                 stim_data_index = 2 * day_order + session_order_in_day
+
+                # extract puff info
+                if TIMEPOINTS_MS2S_FLAG:
+                    process_puff_time = puff_times[stim_data_index][:, 0] / 1000. - HDT
+                else:
+                    process_puff_time = puff_times[stim_data_index][:, 0] - HDT
+                process_puff_types = [STR2EVENT[tmp_label] for tmp_label in puff_types[stim_data_index][:, 0]]
+
+                # filter corrupted session
+                current_session_uid = SessionUID(exp_id=self.exp_id, mice_id=self.mice_id, fov_id=self.fov_id,
+                                                 day_id=extract_day, session_in_day=session_order_in_day)
+                if current_session_uid in LOST_SESSION:
+                    intact_trial_num = LOST_SESSION[current_session_uid]
+                    process_puff_time = process_puff_time[:intact_trial_num]
+                    process_puff_types = process_puff_types[:intact_trial_num]
+
+                # create stims
+                new_stims = Events(
+                    t=process_puff_time,
+                    label=process_puff_types,
+                    origin_t=0,
+                )
                 for cell_order, cell_index in enumerate(cell_indices):
                     # create fluorescence
                     new_fluorescence = TimeSeries(
                         v=total_fluorescence[cell_order, session_start_frame: session_start_frame + SESSION_FRAMES_2P],
                         t=np.linspace(0, SESSION_DURATION, SESSION_FRAMES_2P),
                         drop=dropped_frames[session_start_frame: session_start_frame + SESSION_FRAMES_2P],
-                        origin_t=0,
-                    )
-
-                    # create stims
-                    if TIMEPOINTS_MS2S_FLAG:
-                        process_puff_time = puff_times[stim_data_index][:, 0] / 1000. - HDT
-                    else:
-                        process_puff_time = puff_times[stim_data_index][:, 0] -HDT
-                    new_stims = Events(
-                        t=process_puff_time,
-                        label=[STR2EVENT[tmp_label] for tmp_label in puff_types[stim_data_index][:, 0]],
                         origin_t=0,
                     )
 
@@ -379,10 +467,9 @@ class FOV:
                             stims=new_stims
                         ))
 
-        # split cells and sessions
-        """
-        TODO
-        """
+    @property
+    def image(self) -> Image:
+        return Image(exp_id=self.exp_id, dataset=self.cell_sessions)
 
     @cached_property
     def data_path(self) -> str:
@@ -399,13 +486,12 @@ class Mice:
     exp_id: str
     mice_id: str
 
-    fovs: List[FOV] = field(default=None, repr=False)
+    fovs: List[FOV] = field(init=False, repr=False)
     cell_sessions: List[CellSession] = field(init=False, repr=False)
-
-    # cells: List[Cell] = field(default=None, repr=False)
 
     def __post_init__(self):
         assert self.exp_id in EXP_LIST
+        print(f"Loading {self.exp_id} {self.mice_id}")
 
         # Load fovs
         self.fovs, self.cell_sessions = [], []
@@ -431,4 +517,37 @@ class Mice:
         assert self.mice_id[0] == "M"
         return int(self.mice_id[1:])
 
+    @property
+    def image(self) -> Image:
+        return Image(exp_id=self.exp_id, dataset=self.cell_sessions)
 
+
+@dataclass
+class Experiment:
+    exp_id: str
+    mice: List[Mice] = field(init=False, repr=False)
+    cell_sessions: List[CellSession] = field(init=False, repr=False)
+
+    def __post_init__(self):
+        assert self.exp_id in EXP_LIST
+
+        # Load mice
+        self.mice, self.cell_sessions = [], []
+        for mice_name in os.listdir(self.data_path):
+            assert mice_name[0] == "M" and mice_name[1:].isdigit()
+            new_mice = Mice(
+                exp_id=self.exp_id,
+                mice_id=mice_name,
+            )
+            self.mice.append(new_mice)
+
+            # append child dataclasses
+            self.cell_sessions += new_mice.cell_sessions
+
+    @cached_property
+    def data_path(self) -> str:
+        return path.join(ROOT_PATH, CALCIUM_DATA_PATH, self.exp_id)
+
+    @property
+    def image(self) -> Image:
+        return Image(exp_id=self.exp_id, dataset=self.cell_sessions)

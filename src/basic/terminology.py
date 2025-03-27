@@ -1,4 +1,5 @@
 from enum import Enum
+from dataclasses import dataclass
 
 
 # event label
@@ -69,3 +70,20 @@ class PseDay(Enum):
 PSE_ACC_DAYS = (PseDay(i) for i in range(6))
 PSE_PSE_DAYS = (PseDay(i) for i in range(6, 16))
 PSE_ALL_DAYS = (PseDay(i) for i in range(16))
+
+
+@dataclass(frozen=True, order=True)
+class CellUID:
+    exp_id: str
+    mice_id: str
+    fov_id: int
+    cell_id: int
+
+
+@dataclass(frozen=True, order=True)
+class SessionUID:
+    exp_id: str
+    mice_id: str
+    fov_id: int
+    day_id: SatDay | PseDay
+    session_in_day: int

@@ -7,7 +7,7 @@ from src.basic.terminology import *
 
 # average policy
 REPLACE_BAD_VALUE_FLAG = False
-DEBUG_FLAG = True
+DEBUG_FLAG = False
 FIGURE_SHOW_FLAG = 0
 
 
@@ -21,7 +21,17 @@ FIGURE_PATH = "figures"
 LOST_DATA = {
     "M087": {"corrupted": [SatDay.SAT9, SatDay.SAT10]},
     "M088": {"lost": [SatDay.SAT7, ]},
-    "M017": {"lost": [SatDay.ACC1, ]}
+    "M017": {"lost": [SatDay.ACC1, ]},
+}
+# session corruption
+LOST_SESSION = {
+    SessionUID(exp_id="Calb2_SAT", mice_id="M085", fov_id=4, day_id=SatDay.SAT1, session_in_day=0): 15,
+    SessionUID(exp_id="Calb2_SAT", mice_id="M099", fov_id=4, day_id=SatDay.SAT3, session_in_day=0): 19,
+    SessionUID(exp_id="Ai148_PSE", mice_id="M037", fov_id=2, day_id=PseDay.ACC3, session_in_day=0): 19,
+    SessionUID(exp_id="Ai148_PSE", mice_id="M037", fov_id=2, day_id=PseDay.ACC3, session_in_day=1): 19,
+    SessionUID(exp_id="Ai148_PSE", mice_id="M046", fov_id=2, day_id=PseDay.ACC2, session_in_day=0): 19,
+    SessionUID(exp_id="Ai148_PSE", mice_id="M046", fov_id=2, day_id=PseDay.ACC2, session_in_day=1): 19,
+    SessionUID(exp_id="Ai148_SAT", mice_id="M023", fov_id=1, day_id=SatDay.SAT9, session_in_day=0): 19,
 }
 
 
@@ -32,6 +42,7 @@ EXP2DAY = {
     "Ai148_SAT": SatDay,
     "Calb2_SAT": SatDay,
 }
+
 
 # 2p recording parameters
 FS_2P = 5.1  # Hz
