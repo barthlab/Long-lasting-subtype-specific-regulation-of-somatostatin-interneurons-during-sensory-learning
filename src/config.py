@@ -15,6 +15,7 @@ FIGURE_SHOW_FLAG = 0
 ROOT_PATH = (r"C:\Users\maxyc\PycharmProjects\Long-lasting-subtype-specific-regulation-"
              r"of-somatostatin-interneurons-during-sensory-learning")
 CALCIUM_DATA_PATH = "data/Calcium imaging"
+FEATURE_DATA_PATH = "data/Feature"
 FIGURE_PATH = "figures"
 
 # data lost
@@ -43,6 +44,9 @@ EXP2DAY = {
     "Calb2_SAT": SatDay,
 }
 
+# Calb2 related
+CALB2_EXPRESSION_FILE_NAME = "Expression_Calb2_SAT.xlsx"
+CALB2_THRESHOLD = 200  # A.U.
 
 # 2p recording parameters
 FS_2P = 5.1  # Hz
@@ -64,6 +68,11 @@ BLOCK_PRE_TRIAL = -3  # s
 BLOCK_POST_TRIAL = 5  # s
 LAST_BLOCK_LEN = 10 + BLOCK_POST_TRIAL  # s
 
+# Feature extraction related
+TEST_EVOKED_PERIOD = 1  # s
+TEST_STD_RATIO = 4
+RESPONSE_THRESHOLD = 0.01  # p
+
 
 # color setting
 EVENT2COLOR = {
@@ -73,6 +82,23 @@ EVENT2COLOR = {
     BlockType.InterBlock: "deepskyblue",
     BlockType.PostBlock: "blue"
 }
+OTHER_COLORS = {
+    "puff": "gray"
+}
+CELLTYPE2COLOR = {
+    CellType.Unknown: "gray",
+    CellType.Calb2_Pos: "red",
+    CellType.Calb2_Neg: "black",
+    CellType.Put_Calb2_Neg: "brown",
+    CellType.Put_Calb2_Pos: "pink",
+}
 
 # fluorescence plotting
 DY_DF_F0 = 0.5
+DISPLAY_MAX_DF_F0 = 5
+
+# smooth flow
+BSPLINE_SMOOTH_FACTOR = 0.1
+NUM_SMOOTH_POINTS = 100
+
+

@@ -124,7 +124,7 @@ def load_2p(mat_dict: dict) -> (np.ndarray, np.ndarray, np.ndarray):
 @dataclass
 class Trial:
     cell_id: int
-    day_id: SatDay | PseDay
+    day_id: DayType
     session_id: int
     exp_id: str
     mice_id: str
@@ -165,7 +165,7 @@ class Trial:
 @dataclass
 class SpontBlock:
     cell_id: int
-    day_id: SatDay | PseDay
+    day_id: DayType
     session_id: int
     exp_id: str
     mice_id: str
@@ -208,11 +208,12 @@ class SpontBlock:
 @dataclass
 class CellSession:
     cell_id: int
-    day_id: SatDay | PseDay
+    day_id: DayType
     session_id: int
     exp_id: str
     mice_id: str
     fov_id: int
+    session_order_in_day: int
 
     fluorescence: TimeSeries = field(repr=False)
     baseline: TimeSeries = field(init=False, repr=False)
@@ -299,9 +300,14 @@ class CellSession:
         ), )
 
     @cached_property
-    def cell_uid(self):
+    def cell_uid(self) -> CellUID:
         return CellUID(cell_id=self.cell_id, exp_id=self.exp_id,
                        mice_id=self.mice_id, fov_id=self.fov_id)
+
+    @cached_property
+    def session_uid(self) -> SessionUID:
+        return SessionUID(exp_id=self.exp_id, mice_id=self.mice_id, fov_id=self.fov_id, day_id=self.day_id,
+                          session_in_day=self.session_order_in_day)
 
 
 #####################
@@ -314,13 +320,15 @@ class Image:
     dataset: List[CellSession] = field(repr=False)
 
     cells_uid: List[CellUID] = field(init=False)
-    days: List[SatDay | PseDay] = field(init=False)
+    days: List[DayType] = field(init=False)
+    sessions_uid: List[SessionUID] = field(init=False)
 
     def __post_init__(self):
-        self.cells_uid, self.days = [], []
+        self.cells_uid, self.days, self.sessions_uid = [], [], []
         for single_cellsession in self.dataset:
             self.cells_uid.append(single_cellsession.cell_uid)
             self.days.append(single_cellsession.day_id)
+            self.sessions_uid.append(single_cellsession.session_uid)
         self.cells_uid = list(set(self.cells_uid))
         self.days = sorted(list(set(self.days)), key=lambda x: (0 if isinstance(x, SatDay) else 1, x.value))
         self.cells_uid.sort()
@@ -341,7 +349,7 @@ class Image:
             split_dict[single_uid] = Image(exp_id=self.exp_id, dataset=split_dict[single_uid])
         return split_dict
 
-    def day_split(self) -> Dict[SatDay | PseDay, "Image"]:
+    def day_split(self) -> Dict[DayType, "Image"]:
         split_dict = {single_day: [] for single_day in self.days}
         for single_cs in self.dataset:
             split_dict[single_cs.day_id].append(single_cs)
@@ -356,7 +364,6 @@ class Image:
                        for key, value in criteria.items())
         sub_dataset = [d for d in self.dataset if matches(d)]
         return Image(exp_id=self.exp_id, dataset=sub_dataset)
-
 
 
 @dataclass
@@ -413,7 +420,7 @@ class FOV:
         -> Cell x (Session per day x Day)
         """
         self.cell_sessions = []
-        for extract_day in valid_days:  # type: PseDay | SatDay
+        for extract_day in valid_days:  # type: DayType
             day_order = days_in_data.index(extract_day)
             for session_order_in_day in range(self.num_session_per_day):
                 if DEBUG_FLAG:
@@ -462,6 +469,7 @@ class FOV:
                             exp_id=self.exp_id,
                             mice_id=self.mice_id,
                             fov_id=self.fov_id,
+                            session_order_in_day=session_order_in_day,
 
                             fluorescence=new_fluorescence,
                             stims=new_stims
@@ -474,6 +482,10 @@ class FOV:
     @cached_property
     def data_path(self) -> str:
         return path.join(ROOT_PATH, CALCIUM_DATA_PATH, self.exp_id, self.mice_id, f"FOV{self.fov_id}")
+
+    @cached_property
+    def str_uid(self) -> str:
+        return f"{self.exp_id}_{self.mice_id}_FOV{self.fov_id}"
 
     @cached_property
     def mice_order(self) -> int:
@@ -521,6 +533,10 @@ class Mice:
     def image(self) -> Image:
         return Image(exp_id=self.exp_id, dataset=self.cell_sessions)
 
+    @cached_property
+    def str_uid(self) -> str:
+        return f"{self.exp_id}_{self.mice_id}"
+
 
 @dataclass
 class Experiment:
@@ -551,3 +567,5 @@ class Experiment:
     @property
     def image(self) -> Image:
         return Image(exp_id=self.exp_id, dataset=self.cell_sessions)
+
+

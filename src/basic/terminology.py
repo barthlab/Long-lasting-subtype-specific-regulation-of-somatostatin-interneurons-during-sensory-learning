@@ -1,5 +1,6 @@
 from enum import Enum
 from dataclasses import dataclass
+from typing import Union
 
 
 # event label
@@ -46,6 +47,8 @@ class SatDay(Enum):
 SAT_ACC_DAYS = (SatDay(i) for i in range(6))
 SAT_SAT_DAYS = (SatDay(i) for i in range(6, 16))
 SAT_ALL_DAYS = (SatDay(i) for i in range(16))
+SAT_PLOT_DAYS = (SatDay.ACC2, SatDay.ACC3, SatDay.ACC4, SatDay.ACC5, SatDay.ACC6,
+                 SatDay.SAT1, SatDay.SAT2, SatDay.SAT3, SatDay.SAT4, SatDay.SAT5,)
 
 
 class PseDay(Enum):
@@ -70,6 +73,10 @@ class PseDay(Enum):
 PSE_ACC_DAYS = (PseDay(i) for i in range(6))
 PSE_PSE_DAYS = (PseDay(i) for i in range(6, 16))
 PSE_ALL_DAYS = (PseDay(i) for i in range(16))
+PSE_PLOT_DAYS = (PseDay.ACC4, PseDay.ACC5, PseDay.ACC6, PseDay.PSE1, PseDay.PSE5, PseDay.PSE9)
+
+
+DayType = Union[PseDay, SatDay]
 
 
 @dataclass(frozen=True, order=True)
@@ -79,6 +86,9 @@ class CellUID:
     fov_id: int
     cell_id: int
 
+    def in_short(self) -> str:
+        return f"{self.exp_id} {self.mice_id} FOV{self.fov_id} Cell{self.cell_id}"
+
 
 @dataclass(frozen=True, order=True)
 class SessionUID:
@@ -87,3 +97,12 @@ class SessionUID:
     fov_id: int
     day_id: SatDay | PseDay
     session_in_day: int
+
+
+class CellType(Enum):
+    Unknown = -1
+    Calb2_Neg = 0
+    Calb2_Pos = 1
+    Put_Calb2_Neg = 2
+    Put_Calb2_Pos = 3
+
