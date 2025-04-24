@@ -63,7 +63,7 @@ AP_DURATION = 0.5  # s
 
 # Split parameter
 TRIAL_RANGE = (-2, 4)  # s
-TRIAL_BASELINE_RANGE = (-1, 0)  # s
+TRIAL_BASELINE_RANGE = (-2, 0)  # s
 BLOCK_PRE_TRIAL = -3  # s
 BLOCK_POST_TRIAL = 5  # s
 LAST_BLOCK_LEN = 10 + BLOCK_POST_TRIAL  # s
@@ -76,14 +76,14 @@ RESPONSE_THRESHOLD = 0.01  # p
 
 # color setting
 EVENT2COLOR = {
-    EventType.Puff: "green",
+    EventType.Puff: "black",
     EventType.Blank: "red",
     BlockType.PreBlock: "lightskyblue",
     BlockType.InterBlock: "deepskyblue",
     BlockType.PostBlock: "blue"
 }
 OTHER_COLORS = {
-    "puff": "gray"
+    "puff": "green"
 }
 CELLTYPE2COLOR = {
     CellType.Unknown: "gray",

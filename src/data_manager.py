@@ -19,15 +19,23 @@ class TimeSeries:
     t: np.ndarray
     drop: np.ndarray
     origin_t: float | None
+    _given_origin_flag: bool = field(init=False)
 
     def __post_init__(self):
         assert self.v.ndim == 1 == self.t.ndim == self.drop.ndim, "values, drop, times should be 1-d array"
         assert len(self.v) == len(self.t) == len(self.drop), "values, drop, times have different length"
-        if self.origin_t is None and len(self.t) > 0:
+        self._given_origin_flag = (self.origin_t is not None)
+        if (self.origin_t is None) and (len(self.t)) > 0:
             self.origin_t = float(self.t[0])
 
     @property
     def t_aligned(self):
+        assert self._given_origin_flag, "This TimeSeries doesn't have innate origin_t, call t_zeroed instead."
+        return self.t - self.origin_t
+
+    @property
+    def t_zeroed(self):
+        assert self.origin_t is not None
         return self.t - self.origin_t
 
     @cached_property
@@ -54,16 +62,24 @@ class Events:
     t: list | np.ndarray
     label: List[EventType]
     origin_t: float | None
+    _given_origin_flag: bool = field(init=False)
 
     def __post_init__(self):
         self.t = np.array(self.t)
         assert self.t.ndim == 1, "time must be 1-d array"
         assert len(self.t) == len(self.label), f"time {len(self.t)} and label {len(self.label)} have different length"
-        if self.origin_t is None and len(self.t) > 0:
-            self.origin_t = self.t[0]
+        self._given_origin_flag = (self.origin_t is not None)
+        if (self.origin_t is None) and (len(self.t)) > 0:
+            self.origin_t = float(self.t[0])
 
     @property
     def t_aligned(self):
+        assert self._given_origin_flag, "This Event doesn't have innate origin_t, call t_zeroed instead."
+        return self.t - self.origin_t
+
+    @property
+    def t_zeroed(self):
+        assert self.origin_t is not None
         return self.t - self.origin_t
 
     @cached_property
@@ -121,6 +137,9 @@ def load_2p(mat_dict: dict) -> (np.ndarray, np.ndarray, np.ndarray):
     return soma_fluorescence, dropped_frames, is_cell
 
 
+###################
+# element wrapper ##
+###################
 @dataclass
 class Trial:
     cell_id: int
@@ -177,8 +196,8 @@ class SpontBlock:
     block_len: float = field(init=False)
 
     fluorescence: TimeSeries = field(repr=False)
-    baseline_v: float = field(init=False)
-    df_f0: TimeSeries = field(init=False, repr=False)
+    baseline: TimeSeries = field(repr=False)
+    df_f0: TimeSeries = field(repr=False)
     stims: Events = field(repr=False)
 
     def __post_init__(self):
@@ -186,14 +205,15 @@ class SpontBlock:
         assert (self.block_type in (BlockType.PreBlock, BlockType.PostBlock)) == (self.block_id is None)
         assert self.stims.num_events == 0
 
-        # calculate df/f0
-        self.baseline_v = np.percentile(self.fluorescence.v, q=GLOBAL_BASELINE_PERCENTILE)
-        self.df_f0 = TimeSeries(
-            v=(self.fluorescence.v - self.baseline_v) / self.baseline_v,
-            t=self.fluorescence.t,
-            drop=self.fluorescence.drop,
-            origin_t=self.fluorescence.origin_t
-        )
+        # # Should directly inherent from CellSession
+        # # calculate df/f0
+        # self.baseline_v = np.percentile(self.fluorescence.v, q=GLOBAL_BASELINE_PERCENTILE)
+        # self.df_f0 = TimeSeries(
+        #     v=(self.fluorescence.v - self.baseline_v) / self.baseline_v,
+        #     t=self.fluorescence.t,
+        #     drop=self.fluorescence.drop,
+        #     origin_t=self.fluorescence.origin_t
+        # )
 
         # calculate block length
         self.block_start = float(self.fluorescence.t[0])
@@ -205,6 +225,12 @@ class SpontBlock:
                        mice_id=self.mice_id, fov_id=self.fov_id)
 
 
+InstanceType = Union[Trial, SpontBlock]
+
+
+###################
+# Core dataclass ##
+###################
 @dataclass
 class CellSession:
     cell_id: int
@@ -217,6 +243,7 @@ class CellSession:
 
     fluorescence: TimeSeries = field(repr=False)
     baseline: TimeSeries = field(init=False, repr=False)
+    noise_level: float = field(init=False,)
     df_f0: TimeSeries = field(init=False, repr=False)
     stims: Events = field(repr=False)
 
@@ -252,7 +279,7 @@ class CellSession:
         }
 
         # split trials
-        self.trials = []
+        self.trials, baseline_collect = [], []
         for trial_id, (stim_time, stim_label) in enumerate(zip(self.stims.t, self.stims.label)):
             new_trial = Trial(
                 **kwargs,
@@ -271,6 +298,10 @@ class CellSession:
                 )
             )
             self.trials.append(new_trial)
+            baseline_collect.append(new_trial.df_f0.segment(*TRIAL_BASELINE_RANGE, relative_flag=True).v)
+        global_baseline = np.concatenate(baseline_collect)
+        assert global_baseline.ndim == 1, f"Incorrect global baseline shape: {global_baseline.shape}"
+        self.noise_level = np.std(global_baseline)
 
         # split spont blocks
         self.spont_blocks = [
@@ -279,6 +310,8 @@ class CellSession:
                 block_type=BlockType.PreBlock,
                 block_id=None,
                 fluorescence=self.fluorescence.segment(end_t=self.stims.t[0] + BLOCK_PRE_TRIAL),
+                baseline=self.baseline.segment(end_t=self.stims.t[0] + BLOCK_PRE_TRIAL),
+                df_f0=self.df_f0.segment(end_t=self.stims.t[0] + BLOCK_PRE_TRIAL),
                 stims=self.stims.segment(end_t=self.stims.t[0] + BLOCK_PRE_TRIAL),
             ), ]
         for block_id, stim_time in enumerate(self.stims.t):  # type: int, float
@@ -289,6 +322,8 @@ class CellSession:
                 block_type=BlockType.InterBlock,
                 block_id=block_id,
                 fluorescence=self.fluorescence.segment(start_t=stim_time + BLOCK_POST_TRIAL, end_t=block_end_time),
+                baseline=self.baseline.segment(start_t=stim_time + BLOCK_POST_TRIAL, end_t=block_end_time),
+                df_f0=self.df_f0.segment(start_t=stim_time + BLOCK_POST_TRIAL, end_t=block_end_time),
                 stims=self.stims.segment(start_t=stim_time + BLOCK_POST_TRIAL, end_t=block_end_time),
             ))
         self.spont_blocks.append(SpontBlock(
@@ -296,6 +331,8 @@ class CellSession:
             block_type=BlockType.PostBlock,
             block_id=None,
             fluorescence=self.fluorescence.segment(start_t=self.stims.t[-1] + LAST_BLOCK_LEN),
+            baseline=self.baseline.segment(start_t=self.stims.t[-1] + LAST_BLOCK_LEN),
+            df_f0=self.df_f0.segment(start_t=self.stims.t[-1] + LAST_BLOCK_LEN),
             stims=self.stims.segment(start_t=self.stims.t[-1] + LAST_BLOCK_LEN),
         ), )
 
@@ -358,14 +395,12 @@ class Image:
         return split_dict
 
     def select(self, **criteria) -> "Image":
-        def matches(one_data: CellSession) -> bool:
-            return all(getattr(one_data, key, None) == value if not callable(value) else
-                       value(getattr(one_data, key, None))
-                       for key, value in criteria.items())
-        sub_dataset = [d for d in self.dataset if matches(d)]
-        return Image(exp_id=self.exp_id, dataset=sub_dataset)
+        return Image(exp_id=self.exp_id, dataset=general_filter(self.dataset, **criteria))
 
 
+###################
+# high level wrapper ##
+###################
 @dataclass
 class FOV:
     exp_id: str

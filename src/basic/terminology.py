@@ -50,6 +50,18 @@ SAT_ALL_DAYS = (SatDay(i) for i in range(16))
 SAT_PLOT_DAYS = (SatDay.ACC2, SatDay.ACC3, SatDay.ACC4, SatDay.ACC5, SatDay.ACC6,
                  SatDay.SAT1, SatDay.SAT2, SatDay.SAT3, SatDay.SAT4, SatDay.SAT5,)
 
+ADVANCED_SAT_DAYS = {
+    "ACC123": (SatDay(i) for i in range(3)),
+    "ACC456": (SatDay(i) for i in range(3, 6)),
+    "SAT123": (SatDay(i) for i in range(6, 9)),
+    "SAT456": (SatDay(i) for i in range(9, 12)),
+    "SAT789": (SatDay(i) for i in range(12, 15)),
+    "SAT12": (SatDay(i) for i in range(6, 8)),
+    "SAT45": (SatDay(i) for i in range(9, 11)),
+    "SAT56": (SatDay(i) for i in range(10, 12)),
+    "SAT910": (SatDay(i) for i in range(14, 16)),
+}
+
 
 class PseDay(Enum):
     ACC1 = 0
@@ -74,7 +86,17 @@ PSE_ACC_DAYS = (PseDay(i) for i in range(6))
 PSE_PSE_DAYS = (PseDay(i) for i in range(6, 16))
 PSE_ALL_DAYS = (PseDay(i) for i in range(16))
 PSE_PLOT_DAYS = (PseDay.ACC4, PseDay.ACC5, PseDay.ACC6, PseDay.PSE1, PseDay.PSE5, PseDay.PSE9)
-
+ADVANCED_PSE_DAYS = {
+    "ACC123": (PseDay(i) for i in range(3)),
+    "ACC456": (PseDay(i) for i in range(3, 6)),
+    "Pse123": (PseDay(i) for i in range(6, 9)),
+    "Pse456": (PseDay(i) for i in range(9, 12)),
+    "Pse789": (PseDay(i) for i in range(12, 15)),
+    "Pse12": (PseDay(i) for i in range(6, 8)),
+    "Pse45": (PseDay(i) for i in range(9, 11)),
+    "Pse56": (PseDay(i) for i in range(10, 12)),
+    "Pse910": (PseDay(i) for i in range(14, 16)),
+}
 
 DayType = Union[PseDay, SatDay]
 
@@ -105,4 +127,6 @@ class CellType(Enum):
     Calb2_Pos = 1
     Put_Calb2_Neg = 2
     Put_Calb2_Pos = 3
+
+
 

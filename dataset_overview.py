@@ -7,7 +7,10 @@ if __name__ == "__main__":
     for exp_id in ("Calb2_SAT",):
         mitten = Experiment(exp_id=exp_id)
         mitten_data = mitten.image
-        mitten_feature = feature_manager.FeatureDataBase("mitten_feature", mitten_data)
+        mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
+        mitten_feature.compute_DayWiseFeature("responsiveness", compute_trial_responsive)
+        print(mitten_feature.get("responsiveness").value)
+        exit()
         # visualize.plot_plasticity_manifold(mitten_feature, "SAT123456.jpg")
         # print(mitten_feature.get("EvokedPeak").value.shape)
         # print(mitten_feature.cell_types)

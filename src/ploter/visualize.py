@@ -7,9 +7,6 @@ from matplotlib.colors import Normalize
 import matplotlib.cm as cm
 from scipy.interpolate import splprep, splev
 
-plt.rcParams["font.family"] = "Arial"
-plt.rcParams['font.size'] = 8
-
 import numpy as np
 import os
 import os.path as path
@@ -17,7 +14,10 @@ import os.path as path
 from src.data_manager import *
 from src.basic.utils import *
 from src.config import *
-from src.feature import *
+from src.feature.feature_manager import *
+
+plt.rcParams["font.family"] = "Arial"
+plt.rcParams['font.size'] = 8
 
 
 def oreo(ax: matplotlib.axes.Axes, trials: List[Trial], mean_kwargs: dict, fill_kwargs: dict,
@@ -160,7 +160,7 @@ def plot_image(single_image: Image, save_name: str, title: str = None,
 
     if title is not None:
         fig.suptitle(title)
-    fig.set_size_inches(num_cell*4, 1.5*(num_days+1))
+    fig.set_size_inches(num_cell*8, 1.5*(num_days+1))
     fig.tight_layout()
     if FIGURE_SHOW_FLAG:
         plt.show()
@@ -181,7 +181,7 @@ def plot_plasticity_manifold(features: FeatureDataBase, save_name: str):
         for target_feature_name in ("EvokedPeak", "ResponseProb",):
             features.compute_CellWiseFeature(
                 f"{target_feature_name}_{period_name}",
-                lambda cell_uid, features: compute_average_feature(
+                lambda cell_uid, features: daywise_average(
                     cell_uid, features, target_feature_name, period_list))
 
     evoked_peak, response_prob = features.get("EvokedPeak"), features.get("ResponseProb")

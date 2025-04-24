@@ -60,6 +60,11 @@ class CellDayWiseFeature:
 FeatureType = Union[CellWiseFeature, CellDayWiseFeature]
 
 
+def daywise_average(cell_uid: CellUID, chosen_feature: CellDayWiseFeature, selected_days: Tuple[DayType]) -> float:
+    cell_feature_dict = chosen_feature.get_cell(cell_uid)
+    return nan_mean([cell_feature_dict[day_id] for day_id in selected_days])
+
+
 @dataclass
 class FeatureDataBase:
     name: str
@@ -75,6 +80,10 @@ class FeatureDataBase:
     @property
     def feature_names(self) -> List[str]:
         return [single_feature.feature_name for single_feature in self._features]
+
+    @cached_property
+    def SAT_flag(self) -> bool:
+        return EXP2DAY[self.ref_img.exp_id] is SatDay
 
     def load_Calb2(self):
         file_path = path.join(ROOT_PATH, FEATURE_DATA_PATH, CALB2_EXPRESSION_FILE_NAME)
@@ -92,8 +101,11 @@ class FeatureDataBase:
         self._features.append(CellWiseFeature("Calb2", self.cells_uid, np.array(features["Mean"] >= CALB2_THRESHOLD)))
 
     def compute_DayWiseFeature(self, feature_name: str, func: Callable[[CellSession], float]):
+        """
+        TODO: Maybe func should take in self?
+        """
         if feature_name in self.feature_names:
-            return
+            raise RuntimeError(f"Feature {feature_name} has already been created!")
         tmp_dict = {(cell_uid, day_id): [] for cell_uid in self.cells_uid for day_id in self.days}
         for single_cs in self.ref_img.dataset:
             tmp_dict[(single_cs.cell_uid, single_cs.day_id)].append(func(single_cs))
@@ -105,11 +117,26 @@ class FeatureDataBase:
 
     def compute_CellWiseFeature(self, feature_name: str, func: Callable[[CellUID, "FeatureDataBase"], float]):
         if feature_name in self.feature_names:
-            return
+            raise RuntimeError(f"Feature {feature_name} has already been created!")
         final_array = np.full((len(self.cells_uid),), np.nan)
         for cell_cnt, cell_uid in enumerate(self.cells_uid):
             final_array[cell_cnt] = func(cell_uid, self)
         self._features.append(CellWiseFeature(feature_name, self.cells_uid, final_array))
+
+    def average_DayWise2CellWise(self, average_feature_names: List[str] = None,
+                                 periods_dict: Dict[str, Tuple[DayType]] = None):
+        if average_feature_names is None:
+            average_feature_names = [single_feature.feature_name for single_feature in self._features
+                                     if isinstance(single_feature, CellDayWiseFeature)]
+        if periods_dict is None:
+            periods_dict = ADVANCED_SAT_DAYS if self.SAT_flag else ADVANCED_PSE_DAYS
+        for period_name, period_list in periods_dict.items():
+            for target_feature_name in average_feature_names:
+                target_feature = self.get(target_feature_name)
+                assert isinstance(target_feature, CellDayWiseFeature)
+                self.compute_CellWiseFeature(
+                    f"{target_feature_name}_{period_name}",
+                    lambda cell_uid, _: daywise_average(cell_uid, target_feature, period_list))
 
     def get(self, feature_name: str) -> FeatureType:
         assert feature_name in self.feature_names
@@ -133,30 +160,4 @@ class FeatureDataBase:
     def days(self) -> List[DayType]:
         return self.ref_img.days
 
-
-def compute_evoked_peak(single_cs: CellSession) -> float:
-    tmp_list = []
-    for single_trial in single_cs.trials:
-        if (not single_trial.drop_flag) and (single_trial.trial_type is EventType.Puff):
-            trial_clip = single_trial.df_f0.segment(0, TEST_EVOKED_PERIOD, relative_flag=True).v
-            tmp_list.append(nan_mean(trial_clip))
-    return nan_mean(tmp_list)
-
-
-def compute_response_prob(single_cs: CellSession) -> float:
-    tmp_list = []
-    for single_trial in single_cs.trials:
-        if (not single_trial.drop_flag) and (single_trial.trial_type is EventType.Puff):
-            evoked_period = single_trial.df_f0.segment(0, TEST_EVOKED_PERIOD, relative_flag=True).v
-            baseline_period = single_trial.df_f0.segment(*TRIAL_BASELINE_RANGE, relative_flag=True).v
-            tmp_list.append(np.mean(evoked_period) >= TEST_STD_RATIO * np.std(baseline_period))
-    return nan_mean(tmp_list)
-
-
-def compute_average_feature(cell_uid: CellUID, features: FeatureDataBase, daywise_feature_name: str,
-                            selected_days_cnt: List[int]) -> float:
-    chosen_feature = features.get(daywise_feature_name)
-    assert isinstance(chosen_feature, CellDayWiseFeature)
-    cell_feature_dict = chosen_feature.get_cell(cell_uid)
-    return nan_mean([cell_feature_dict[day_id] for day_id in features.days if day_id.value in selected_days_cnt])
 

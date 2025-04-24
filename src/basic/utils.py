@@ -85,9 +85,15 @@ def high_pass(xs, fs, cutoff):
 
 def general_filter(datalist: list, **criteria) -> list:
     def matches(one_data) -> bool:
-        return all(getattr(one_data, key, None) == value if not callable(value) else
-                   value(getattr(one_data, key, None))
-                   for key, value in criteria.items())
+        def check_criterion(key, value):
+            retrieved_val = getattr(one_data, key, None)
+            if callable(value):
+                return value(retrieved_val)
+            elif isinstance(value, tuple):
+                return retrieved_val in value
+            else:
+                return retrieved_val == value
+        return all(check_criterion(k, v) for k, v in criteria.items())
     return [d for d in datalist if matches(d)]
 
 
