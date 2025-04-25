@@ -1,33 +1,14 @@
-import matplotlib.pyplot as plt
-import matplotlib.patches as ptchs
-import matplotlib
-from matplotlib.collections import LineCollection
-from mpl_toolkits.mplot3d.art3d import Line3DCollection
-from matplotlib.colors import Normalize
-import matplotlib.cm as cm
-from scipy.interpolate import splprep, splev
-
 import numpy as np
 import os
 import os.path as path
 
 from src.data_manager import *
 from src.basic.utils import *
+from src.basic.data_operator import *
 from src.config import *
 from src.feature.feature_manager import *
-
-plt.rcParams["font.family"] = "Arial"
-plt.rcParams['font.size'] = 8
-
-
-def oreo(ax: matplotlib.axes.Axes, trials: List[Trial], mean_kwargs: dict, fill_kwargs: dict,
-         x_offset: float = 0, y_offset: float = 0):
-    avg_xs, avg_mean, avg_sem, _ = synchronize_time_series_data(
-        [single_trial.df_f0.t_aligned for single_trial in trials],
-        [single_trial.df_f0.v for single_trial in trials],
-    )
-    ax.plot(avg_xs + x_offset, avg_mean + y_offset, **mean_kwargs)
-    ax.fill_between(avg_xs + x_offset, avg_mean - avg_sem + y_offset, avg_mean + avg_sem + y_offset, **fill_kwargs)
+from src.ploter.plotting_params import *
+from src.ploter.plotting_utils import *
 
 
 def plot_cell_session(single_cs: CellSession, save_name: str):
@@ -86,9 +67,9 @@ def plot_image(single_image: Image, save_name: str, title: str = None,
 
     # plot individual data
     max_depth = 0
-    cell_image_dict = single_image.cell_split()
+    cell_image_dict = single_image.split("cell_uid")
     for col_id, (cell_uid, cell_image) in enumerate(cell_image_dict.items()):  # type: int, (CellUID, Image)
-        day_image_dict_percell = cell_image.day_split()
+        day_image_dict_percell = cell_image.split("day_id")
         postfix = f" {additional_info.get('Calb2 Mean').get_cell(cell_uid):.1f}" if additional_info is not None\
             else ""
         axs[0, col_id * 3 + 1].set_title(cell_uid.in_short()+postfix, color=CELLTYPE2COLOR[cell_types[cell_uid]])
@@ -107,15 +88,16 @@ def plot_image(single_image: Image, save_name: str, title: str = None,
                                 single_trial.df_f0.v - trial_id * DY_DF_F0 - session_dy,
                                 color=EVENT2COLOR[single_trial.trial_type], alpha=0.7, lw=1, ls=ls)
 
-
-                    evoked_period = single_trial.df_f0.segment(0, TEST_EVOKED_PERIOD, relative_flag=True).v
-                    baseline_period = single_trial.df_f0.segment(*TRIAL_BASELINE_RANGE, relative_flag=True).v
-                    if np.mean(evoked_period) >= TEST_STD_RATIO*np.std(baseline_period):
-                        tmp_ax.scatter(-2, - trial_id * DY_DF_F0 - session_dy, marker="*", color="black", s=10)
-
+                    if hasattr(single_trial, "responsiveness"):
+                        baseline_period = single_trial.df_f0.segment(*TRIAL_BASELINE_RANGE, relative_flag=True)
+                        if single_trial.responsiveness:
+                            tmp_ax.add_patch(ptchs.Rectangle(
+                                (TRIAL_BASELINE_RANGE[0], - trial_id * DY_DF_F0 - session_dy),
+                                TRIAL_BASELINE_RANGE[1]-TRIAL_BASELINE_RANGE[0], TEST_STD_RATIO*single_cs.noise_level,
+                                facecolor=OTHER_COLORS["annotate"], alpha=0.3, edgecolor='none', ))
 
                 for block_order, single_block in enumerate(single_cs.spont_blocks):
-                    spont_ax.plot(single_block.df_f0.t_aligned,
+                    spont_ax.plot(single_block.df_f0.t_zeroed,
                                   single_block.df_f0.v - (block_order - 0.5) * DY_DF_F0 - session_dy,
                                   color=EVENT2COLOR[single_block.block_type], alpha=0.7, lw=1)
                 session_dy += (len(single_cs.trials) + 2) * DY_DF_F0
@@ -135,7 +117,6 @@ def plot_image(single_image: Image, save_name: str, title: str = None,
         avg_puff_ax, avg_blank_ax, avg_spont_ax = axs[-1, col_id*3], axs[-1, col_id*3+1], axs[-1, col_id*3+2]
 
         all_trials = cell_image.trials
-
         oreo(ax=avg_puff_ax, trials=general_filter(all_trials, trial_type=EventType.Puff),
              mean_kwargs={"color": EVENT2COLOR[EventType.Puff], "alpha": 0.7, "lw": 1},
              fill_kwargs={"color": EVENT2COLOR[EventType.Puff], "alpha": 0.2, "lw": 0})
@@ -160,7 +141,7 @@ def plot_image(single_image: Image, save_name: str, title: str = None,
 
     if title is not None:
         fig.suptitle(title)
-    fig.set_size_inches(num_cell*8, 1.5*(num_days+1))
+    fig.set_size_inches(num_cell*6, 1.5*(num_days+1))
     fig.tight_layout()
     if FIGURE_SHOW_FLAG:
         plt.show()

@@ -12,15 +12,11 @@ if __name__ == "__main__":
         # print(mitten_feature.get("EvokedPeak").value.shape)
         # print(mitten_feature.cell_types)
 
-        for start_cell_cnt in range(0, len(mitten_data.cells_uid), 4):
-            selected_cell_lists = mitten_data.cells_uid[start_cell_cnt: start_cell_cnt+4]
-            visualize.plot_image(
-                mitten_data.select(
-                    day_id=lambda x: x in SAT_PLOT_DAYS,
-                    cell_uid=lambda x: x in selected_cell_lists,
-                ),
-                path.join(mitten_data.exp_id+"_toprint", f"slice_{start_cell_cnt}.png"),
-                additional_info=mitten_feature
-            )
-            if start_cell_cnt > 2:
+        for single_mice in mitten.mice:
+            for single_fov in single_mice.fovs:  # type: int, FOV
+                visualize.plot_image(
+                    Image(mitten.exp_id, single_fov.cell_sessions),
+                    path.join(mitten_data.exp_id, f"{single_fov.exp_id}_FOV{single_fov.fov_id}.png"),
+                    additional_info=mitten_feature
+                )
                 exit()

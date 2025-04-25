@@ -42,6 +42,9 @@ debug/
 *.mat
 *.xlsx
 *.jpg
+*.png
 /data/
 /figures/archive_figure
 /figures/
+/old_scripts/
+/other_scripts/

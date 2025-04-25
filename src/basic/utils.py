@@ -1,6 +1,6 @@
 import pandas as pd
 from scipy.io import loadmat, savemat
-from typing import Optional, List
+from typing import Optional, List, Iterable
 import numpy as np
 import scipy.signal as signal
 from scipy import stats
@@ -83,7 +83,7 @@ def high_pass(xs, fs, cutoff):
     return filtered_ys
 
 
-def general_filter(datalist: list, **criteria) -> list:
+def general_filter(datalist: Iterable, **criteria) -> list:
     def matches(one_data) -> bool:
         def check_criterion(key, value):
             retrieved_val = getattr(one_data, key, None)
@@ -97,17 +97,4 @@ def general_filter(datalist: list, **criteria) -> list:
     return [d for d in datalist if matches(d)]
 
 
-def synchronize_time_series_data(
-        times: List[np.ndarray], values: List[np.ndarray],
-        elaborate: bool = False) -> (np.ndarray, np.ndarray, np.ndarray, List[np.ndarray]):
-    max_length = np.max([len(x) for x in times])
-    min_time, max_time = np.min(np.concatenate(times)), np.max(np.concatenate(times))
-    xs = np.linspace(min_time, max_time, int(max_length * 2))
-    # for tmp_time, tmp_value in zip(times, values):
-    #     print(tmp_value.shape, tmp_time.shape)
-    interpolated_values = [np.interp(xs, tmp_time, tmp_value)
-                           for tmp_time, tmp_value in zip(times, values)]
-    mean_value = np.mean(np.array(interpolated_values), axis=0)
-    sem_value = np.std(np.array(interpolated_values), axis=0) / np.sqrt(len(interpolated_values))
-    return xs, mean_value, sem_value, interpolated_values
 

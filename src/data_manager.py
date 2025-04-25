@@ -1,10 +1,12 @@
 from dataclasses import dataclass, field, MISSING
-from typing import List, Callable, Optional, Dict
+from typing import List, Callable, Optional, Dict, Any, Iterable
 from functools import cached_property
 import numpy as np
 from scipy.ndimage import percentile_filter
 import os
 import os.path as path
+from collections import defaultdict
+from itertools import chain
 
 from src.basic.utils import *
 from src.config import *
@@ -17,11 +19,12 @@ from src.config import *
 class TimeSeries:
     v: np.ndarray
     t: np.ndarray
-    drop: np.ndarray
     origin_t: float | None
+    drop: np.ndarray = field(default=None)
     _given_origin_flag: bool = field(init=False)
 
     def __post_init__(self):
+        self.drop = self.drop if self.drop is not None else np.zeros_like(self.t)
         assert self.v.ndim == 1 == self.t.ndim == self.drop.ndim, "values, drop, times should be 1-d array"
         assert len(self.v) == len(self.t) == len(self.drop), "values, drop, times have different length"
         self._given_origin_flag = (self.origin_t is not None)
@@ -371,28 +374,34 @@ class Image:
         self.cells_uid.sort()
 
     @property
-    def trials(self) -> List[Trial]:
-        return sum([single_cs.trials for single_cs in self.dataset], [])
+    def trials(self) -> Iterable[Trial]:
+        return list(chain.from_iterable([single_cs.trials for single_cs in self.dataset]))
 
     @property
-    def spont_blocks(self) -> List[SpontBlock]:
-        return sum([single_cs.spont_blocks for single_cs in self.dataset], [])
+    def spont_blocks(self) -> Iterable[SpontBlock]:
+        return list(chain.from_iterable([single_cs.spont_blocks for single_cs in self.dataset]))
 
-    def cell_split(self) -> Dict[CellUID, "Image"]:
-        split_dict = {single_uid: [] for single_uid in self.cells_uid}
-        for single_cs in self.dataset:
-            split_dict[single_cs.cell_uid].append(single_cs)
-        for single_uid in self.cells_uid:
-            split_dict[single_uid] = Image(exp_id=self.exp_id, dataset=split_dict[single_uid])
-        return split_dict
+    @property
+    def n_cells(self) -> int:
+        return len(self.cells_uid)
 
-    def day_split(self) -> Dict[DayType, "Image"]:
-        split_dict = {single_day: [] for single_day in self.days}
+    @property
+    def n_days(self) -> int:
+        return len(self.days)
+
+    def split(self, key: str) -> Dict[Any, "Image"]:
+        split_dict = defaultdict(list)
         for single_cs in self.dataset:
-            split_dict[single_cs.day_id].append(single_cs)
-        for single_day in self.days:
-            split_dict[single_day] = Image(exp_id=self.exp_id, dataset=split_dict[single_day])
-        return split_dict
+            try:
+                single_cs_key = getattr(single_cs, key)
+            except Exception as e:
+                raise AttributeError(f"'{key}' not found in {single_cs}") from e
+            split_dict[single_cs_key].append(single_cs)
+        result_images = {
+            split_key: Image(exp_id=self.exp_id, dataset=session_list)
+            for split_key, session_list in split_dict.items()
+        }
+        return result_images
 
     def select(self, **criteria) -> "Image":
         return Image(exp_id=self.exp_id, dataset=general_filter(self.dataset, **criteria))

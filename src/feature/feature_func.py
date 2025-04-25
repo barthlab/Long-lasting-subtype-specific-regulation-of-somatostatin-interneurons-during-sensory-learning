@@ -12,15 +12,15 @@ def general_feature_interface(
         metric_func: Callable[[InstanceType, ...], float],
         insert_name: str = None, instance_criteria: dict = None, func_criteria: dict = None) -> float:
     tmp_list = []
-    if instance_criteria is None:
-        instance_criteria = {}
-    if func_criteria is None:
-        func_criteria = {}
+    instance_criteria = instance_criteria if instance_criteria is not None else {}
+    func_criteria = func_criteria if func_criteria is not None else {}
     for single_instance in general_filter(instance_list, **instance_criteria):  # type: InstanceType
         trial_feature = metric_func(single_instance, **func_criteria)
         tmp_list.append(trial_feature)
-        if insert_name is not None:
-            single_instance.__dict__[insert_name] = trial_feature
+        if hasattr(single_instance, insert_name):
+            raise AttributeError(f"Feature '{insert_name}' already exists on {single_instance}")
+        else:
+            setattr(single_instance, insert_name, trial_feature)
     assert len(tmp_list) > 0
     return nan_mean(tmp_list)
 
@@ -35,7 +35,8 @@ def feature_responsive_flag(single_trial: Trial,
 # Feature funcs
 compute_trial_responsive: Callable[[CellSession], float] = lambda single_cs: general_feature_interface(
     instance_list=single_cs.trials, metric_func=feature_responsive_flag, insert_name="responsiveness",
-    func_criteria={"start_t": 0, "end_t": TEST_EVOKED_PERIOD, "ratio_std": 2, "noise_level": single_cs.noise_level},
+    func_criteria={"start_t": 0, "end_t": TEST_EVOKED_PERIOD, "ratio_std": TEST_STD_RATIO,
+                   "noise_level": single_cs.noise_level},
 )
 
 # def compute_peak(single_cs: CellSession, t_start: float, t_end: float) -> float:

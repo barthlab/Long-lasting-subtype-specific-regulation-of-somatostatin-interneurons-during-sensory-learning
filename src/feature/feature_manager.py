@@ -1,13 +1,13 @@
 import numpy as np
-
-from src.config import *
-from src.basic.utils import *
-from src.data_manager import *
-
+from collections import defaultdict
 from dataclasses import dataclass, field, MISSING
 from collections import defaultdict
 from typing import List, Callable, Optional, Dict, Union, Tuple
 from functools import cached_property
+
+from src.config import *
+from src.basic.utils import *
+from src.data_manager import *
 
 
 @dataclass
@@ -101,19 +101,26 @@ class FeatureDataBase:
         self._features.append(CellWiseFeature("Calb2", self.cells_uid, np.array(features["Mean"] >= CALB2_THRESHOLD)))
 
     def compute_DayWiseFeature(self, feature_name: str, func: Callable[[CellSession], float]):
-        """
-        TODO: Maybe func should take in self?
-        """
         if feature_name in self.feature_names:
-            raise RuntimeError(f"Feature {feature_name} has already been created!")
-        tmp_dict = {(cell_uid, day_id): [] for cell_uid in self.cells_uid for day_id in self.days}
+            raise RuntimeError(f"Feature {feature_name} is already registered!")
+        raw_feature_dict: Dict[Tuple[CellUID, DayType], List[float]] = defaultdict(list)
         for single_cs in self.ref_img.dataset:
-            tmp_dict[(single_cs.cell_uid, single_cs.day_id)].append(func(single_cs))
-        final_matrix = np.full((len(self.cells_uid), len(self.days)), np.nan)
-        for cell_cnt, cell_uid in enumerate(self.cells_uid):
-            for day_cnt, day_id in enumerate(self.days):
-                final_matrix[cell_cnt, day_cnt] = nan_mean(tmp_dict[(cell_uid, day_id)])
-        self._features.append(CellDayWiseFeature(feature_name, self.cells_uid, self.days, final_matrix))
+            raw_feature_dict[(single_cs.cell_uid, single_cs.day_id)].append(func(single_cs))
+
+        # average multiple sessions' result for each day each cell
+        avg_matrix = np.full((len(self.cells_uid), len(self.days)), np.nan)
+        for (cell_uid, day_id), values in raw_feature_dict.items():
+            cell_idx, day_idx = self.cells_idx[cell_uid], self.days_idx[day_id]
+            avg_matrix[cell_idx, day_idx] = nan_mean(raw_feature_dict[(cell_uid, day_id)])
+
+        # insert feature into CellSession
+        for single_cs in self.ref_img.dataset:
+            if hasattr(single_cs, feature_name):
+                raise AttributeError(f"Feature '{feature_name}' already exists on {single_cs}")
+            else:
+                setattr(single_cs, feature_name, avg_matrix[
+                    self.cells_idx[single_cs.cell_uid], self.days_idx[single_cs.day_id]])
+        self._features.append(CellDayWiseFeature(feature_name, self.cells_uid, self.days, avg_matrix))
 
     def compute_CellWiseFeature(self, feature_name: str, func: Callable[[CellUID, "FeatureDataBase"], float]):
         if feature_name in self.feature_names:
@@ -121,6 +128,13 @@ class FeatureDataBase:
         final_array = np.full((len(self.cells_uid),), np.nan)
         for cell_cnt, cell_uid in enumerate(self.cells_uid):
             final_array[cell_cnt] = func(cell_uid, self)
+
+        # insert feature into CellSession
+        for single_cs in self.ref_img.dataset:
+            if hasattr(single_cs, feature_name):
+                raise AttributeError(f"Feature '{feature_name}' already exists on {single_cs}")
+            else:
+                setattr(single_cs, feature_name, final_array[self.cells_idx[single_cs.cell_uid]])
         self._features.append(CellWiseFeature(feature_name, self.cells_uid, final_array))
 
     def average_DayWise2CellWise(self, average_feature_names: List[str] = None,
@@ -157,7 +171,15 @@ class FeatureDataBase:
         return self.ref_img.cells_uid
 
     @cached_property
+    def cells_idx(self) -> Dict[CellUID, int]:
+        return {uid: i for i, uid in enumerate(self.cells_uid)}
+
+    @cached_property
     def days(self) -> List[DayType]:
         return self.ref_img.days
+
+    @cached_property
+    def days_idx(self) -> Dict[DayType, int]:
+        return {day: i for i, day in enumerate(self.days)}
 
 
