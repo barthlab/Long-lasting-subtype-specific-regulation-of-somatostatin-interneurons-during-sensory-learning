@@ -34,9 +34,13 @@ def plot_heatmap_overview_cellwise(
     sort_col = "Record Date"
     if sorting is not None:
         sort_col, sort_func = sorting
-        assert sort_col in cols_names, f"Sorting name missing ({sort_col}) in {cols_names}"
-        cells_uid_order = sorted(single_image.cells_uid, key=lambda x: sort_func(extracted_data[sort_col][x]),
-                                 reverse=True)
+        if sort_col == "mice":
+            cells_uid_order = sorted(single_image.cells_uid,
+                                     key=lambda x: (x.mice_id, sort_func(extracted_data["ACC6"][x])), reverse=True)
+        else:
+            assert sort_col in cols_names, f"Sorting name missing ({sort_col}) in {cols_names}"
+            cells_uid_order = sorted(single_image.cells_uid, key=lambda x: sort_func(extracted_data[sort_col][x]),
+                                     reverse=True)
     else:
         cells_uid_order = single_image.cells_uid
 
@@ -65,6 +69,16 @@ def plot_heatmap_overview_cellwise(
         if ax_id == 0:
             axh[ax_id].set_ylabel(f"Cell ID (Ranked on {sort_col})" if sorting is not None else "Cell ID")
             axc[ax_id].set_ylabel(r'$\Delta F/F_0$')
+            if sort_col == "mice":
+                yticks, yticklabels = [0,], [cells_uid_order[0].mice_id,]
+                for i in range(1, len(cells_uid_order)):
+                    current_mice_id = cells_uid_order[i].mice_id
+                    previous_mice_id = cells_uid_order[i - 1].mice_id
+                    if current_mice_id != previous_mice_id:
+                        yticks.append(i)
+                        yticklabels.append(current_mice_id)
+
+                axh[ax_id].set_yticks(yticks, yticklabels)
         else:
             axh[ax_id].set_yticklabels([])
             axh[ax_id].set_yticks([])
@@ -140,20 +154,20 @@ def plot_peak_complex(
                             lw=1, c=image_color[image_id], ls=':', alpha=0.7)
 
         tmp_feature = single_feature_db.get(feature_name=curve_feature_name)
-        tmp_data = by_cell2by_mice({cell_uid: tmp_feature.get_cell(cell_uid=cell_uid)
-                                    for cell_uid in single_feature_db.cells_uid})
         xs = [day_id.value for day_id in single_feature_db.days]
-        grand_day_change = defaultdict(list)
-        for mice_id, days_dict in tmp_data.items():
-            sorted_value = [nan_mean(days_dict[day_id]) for day_id in single_feature_db.days]
+        day_change_by_mice = invert_nested_dict({day_id: by_cell2by_mice(tmp_feature.get_day(day_id))
+                                                 for day_id in single_feature_db.days})
+        for mice_id, days_dict in day_change_by_mice.items():
+            sorted_value = [days_dict[day_id] for day_id in single_feature_db.days]
             axc.plot(xs, sorted_value, lw=0.5, alpha=0.2, marker='.', markersize=2, color=image_color[image_id])
-            for day_id in single_feature_db.days:
-                grand_day_change[day_id].append(nan_mean(days_dict[day_id]))
-        grand_avg, grand_sem = [], []
-        for day_id in single_feature_db.days:
-            grand_avg.append(nan_mean(grand_day_change[day_id]))
-            grand_sem.append(nan_sem(grand_day_change[day_id]))
-        grand_avg, grand_sem = np.array(grand_avg), np.array(grand_sem)
+
+        if by_mouse_flag:
+            grand_average = combine_dicts(*[days_dict for days_dict in day_change_by_mice.values()])
+        else:
+            grand_average = {day_id: list(tmp_feature.get_day(day_id).values())
+                             for day_id in single_feature_db.days}
+        grand_avg = np.array([nan_mean(grand_average[day_id]) for day_id in single_feature_db.days])
+        grand_sem = np.array([nan_sem(grand_average[day_id]) for day_id in single_feature_db.days])
         axc.plot(xs, grand_avg, lw=1, alpha=0.7, marker='.', markersize=6, color=image_color[image_id])
         axc.fill_between(xs, grand_avg-grand_sem, grand_avg+grand_sem, lw=0, alpha=0.3, color=image_color[image_id])
 
@@ -173,9 +187,8 @@ def plot_peak_complex(
     axb.axvspan(0.75, len(bar_days)-0.5, lw=0, alpha=0.4, zorder=0,
                 color=OTHER_COLORS['SAT'] if feature_db.SAT_flag else OTHER_COLORS["PSE"], )
     axb.set_ylabel(r'Peak response ($\Delta F/F_0$)')
-    print(np.arange(len(bar_days)), bar_days)
     axb.set_xticks(np.arange(len(bar_days)), bar_days, rotation=25)
-    axc.set_ylim(DISPLAY_MIN_DF_F0, AVG_MAX_FOLD_Ai148 if feature_db.Ai148_flag else AVG_MAX_FOLD_Calb2)
+    axc.set_ylim(0, AVG_MAX_FOLD_Ai148 if feature_db.Ai148_flag else AVG_MAX_FOLD_Calb2)
     axc.spines[['right', 'top']].set_visible(False)
     axc.set_xticks([day_id.value for day_id in feature_db.days],
                    [day_id.name for day_id in feature_db.days], rotation=45,)

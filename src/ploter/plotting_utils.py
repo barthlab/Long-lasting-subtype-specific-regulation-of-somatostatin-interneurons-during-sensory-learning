@@ -17,7 +17,7 @@ def quick_save(fig, save_name):
     else:
         save_path = path.join(ROOT_PATH, FIGURE_PATH, save_name)
         os.makedirs(path.dirname(save_path), exist_ok=True)
-        fig.savefig(save_path, dpi=300, transparent=True)
+        fig.savefig(save_path, dpi=900, transparent=True)
     plt.close(fig)
 
 

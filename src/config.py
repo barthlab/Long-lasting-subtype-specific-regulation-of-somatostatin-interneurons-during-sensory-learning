@@ -37,7 +37,7 @@ LOST_SESSION = {
 
 
 # experiment related
-EXP_LIST = ("Ai148_PSE", "Ai148_SAT", "Calb2_SAT")
+EXP_LIST = ("Ai148_SAT", "Ai148_PSE", "Calb2_SAT")
 EXP2DAY = {
     "Ai148_PSE": PseDay,
     "Ai148_SAT": SatDay,
@@ -69,7 +69,7 @@ AP_DURATION = 0.5  # s
 
 # Split parameter
 TRIAL_RANGE = (-2, 4)  # s
-TRIAL_BASELINE_RANGE = (-2, 0)  # s
+TRIAL_BASELINE_RANGE = (-1, 0)  # s
 BLOCK_PRE_TRIAL = -3  # s
 BLOCK_POST_TRIAL = 5  # s
 LAST_BLOCK_LEN = 10 + BLOCK_POST_TRIAL  # s

@@ -23,7 +23,7 @@ def read_xlsx_sheet(table_dir: str, header: None | int, sheet_id: int = 0) -> pd
 
 def nan_mean(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
     if len(a) == 0:
-        return np.nan
+        return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
         return np.nanmean(replaced_a, **kwargs)
@@ -31,7 +31,7 @@ def nan_mean(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
 
 def nan_median(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
     if len(a) == 0:
-        return np.nan
+        return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
         return np.nanmedian(replaced_a, **kwargs)
@@ -39,7 +39,7 @@ def nan_median(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
 
 def nan_std(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
     if len(a) == 0:
-        return np.nan
+        return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
         return np.nanstd(replaced_a, **kwargs)
@@ -47,7 +47,7 @@ def nan_std(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
 
 def nan_sem(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
     if len(a) == 0:
-        return np.nan
+        return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
         return np.nanstd(replaced_a, **kwargs)/np.sqrt(np.count_nonzero(~np.isnan(replaced_a)))
@@ -55,7 +55,7 @@ def nan_sem(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
 
 def nan_max(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
     if len(a) == 0:
-        return np.nan
+        return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
         return np.nanmax(replaced_a, **kwargs)
@@ -63,7 +63,7 @@ def nan_max(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
 
 def nan_min(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
     if len(a) == 0:
-        return np.nan
+        return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
         return np.nanmin(replaced_a, **kwargs)
@@ -71,7 +71,7 @@ def nan_min(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
 
 def nan_sum(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
     if len(a) == 0:
-        return np.nan
+        return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
         return np.nansum(replaced_a, **kwargs)
@@ -107,10 +107,24 @@ def general_filter(datalist: Iterable, **criteria) -> list:
     return [d for d in datalist if matches(d)]
 
 
-def combine_dicts(*dicts):
+def combine_dicts(*dicts) -> dict:
     result = defaultdict(list)
     for d in dicts:
         for key, value in d.items():
             assert isinstance(value, float)
             result[key].append(value)
     return result
+
+
+def average_dict(input_dict: dict) -> dict:
+    return {k: nan_mean(v) for k, v in input_dict.items()}
+
+
+def invert_nested_dict(input_dict: Dict[str, dict]) -> Dict[str, dict]:
+    result_dict = defaultdict(dict)
+    for k1, v1 in input_dict.items():
+        for k2, v2 in v1.items():
+            result_dict[k2][k1] = v2
+    return result_dict
+
+

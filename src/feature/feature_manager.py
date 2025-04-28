@@ -104,7 +104,7 @@ class FeatureDataBase:
         for row_id in range(num_cell):
             assert features.iloc[row_id, 1] == f"cell {row_id+1}"
 
-        # self._features.append(CellWiseFeature("Calb2 Mean", self.cells_uid, features["Mean"]))
+        self._features.append(CellWiseFeature("Calb2 Mean", self.cells_uid, features["Mean"]))
         # self._features.append(CellWiseFeature("Calb2 SD", self.cells_uid, features["Mean"]))
         # self._features.append(CellWiseFeature("Calb2 Max", self.cells_uid, features["Max"]))
         molecular_identity = np.array(features["Mean"] >= CALB2_THRESHOLD)

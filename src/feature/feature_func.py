@@ -46,8 +46,9 @@ compute_trial_responsive: Callable[[CellSession], float] = lambda _single_cs: ge
 )
 compute_trial_evoked_peak: Callable[[CellSession], float] = lambda _single_cs: general_feature_interface(
     instance_list=_single_cs.trials, metric_func=feature_peak, insert_name="evoked_peak",
-    func_criteria={"start_t": 0, "end_t": TEST_EVOKED_PERIOD,},
+    func_criteria={"start_t": 0, "end_t": TEST_EVOKED_PERIOD,}, instance_criteria={"trial_type": EventType.Puff}
 )
+
 
 # def compute_peak(single_cs: CellSession, t_start: float, t_end: float) -> float:
 #     tmp_list = []

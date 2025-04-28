@@ -62,7 +62,7 @@ def plot_image(single_image: Image, save_name: str, title: str = None,
                             sharey='row', sharex='col')
     print(f"Cell num: {len(single_image.cells_uid)}", [x for x in single_image.cells_uid])
     print([x.name for x in single_image.days])
-    cell_types = {CellType.Unknown for _ in single_image.cells_uid} if additional_info is None else (
+    cell_types = {cell_uid: CellType.Unknown for cell_uid in single_image.cells_uid} if additional_info is None else (
         additional_info.cell_types)
 
     # plot individual data
@@ -141,7 +141,8 @@ def plot_image(single_image: Image, save_name: str, title: str = None,
 
     for row_id in range(num_days):
         for col_id in range(3*num_cell):
-            axs[row_id, col_id].set_ylim(max_depth, DISPLAY_MAX_DF_F0)
+            axs[row_id, col_id].set_ylim(
+                max_depth, DISPLAY_MAX_DF_F0_Ai148 if Ai148_FLAG[single_image.exp_id] else DISPLAY_MAX_DF_F0_Calb2)
 
     if title is not None:
         fig.suptitle(title)
