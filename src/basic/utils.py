@@ -1,9 +1,11 @@
 import pandas as pd
 from scipy.io import loadmat, savemat
 from typing import Optional, List, Iterable
+from collections import defaultdict
 import numpy as np
 import scipy.signal as signal
 from scipy import stats
+
 from src.config import *
 
 
@@ -41,6 +43,14 @@ def nan_std(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
         return np.nanstd(replaced_a, **kwargs)
+
+
+def nan_sem(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
+    if len(a) == 0:
+        return np.nan
+    else:
+        replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
+        return np.nanstd(replaced_a, **kwargs)/np.sqrt(np.count_nonzero(~np.isnan(replaced_a)))
 
 
 def nan_max(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
@@ -97,4 +107,10 @@ def general_filter(datalist: Iterable, **criteria) -> list:
     return [d for d in datalist if matches(d)]
 
 
-
+def combine_dicts(*dicts):
+    result = defaultdict(list)
+    for d in dicts:
+        for key, value in d.items():
+            assert isinstance(value, float)
+            result[key].append(value)
+    return result

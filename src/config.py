@@ -43,12 +43,12 @@ EXP2DAY = {
     "Ai148_SAT": SatDay,
     "Calb2_SAT": SatDay,
 }
-SAT_FLAG = {
-    "Ai148_PSE": False,
+Ai148_FLAG = {
+    "Ai148_PSE": True,
     "Ai148_SAT": True,
-    "Calb2_SAT": True,
+    "Calb2_SAT": False,
 }
-
+BASELINE_DAYS = "ACC456"
 
 # Calb2 related
 CALB2_EXPRESSION_FILE_NAME = "Expression_Calb2_SAT.xlsx"

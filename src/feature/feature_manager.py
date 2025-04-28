@@ -27,6 +27,10 @@ class CellWiseFeature:
     def get_cell(self, cell_uid: CellUID) -> float:
         return self._data[cell_uid]
 
+    @property
+    def by_cells(self) -> Dict[CellUID, float]:
+        return self._data
+
 
 @dataclass
 class CellDayWiseFeature:
@@ -70,11 +74,12 @@ class FeatureDataBase:
     name: str
     ref_img: Image = field(repr=False)
     _features: List[FeatureType] = field(default=None, repr=False)
+    prime: bool = field(default=True)
 
     def __post_init__(self):
         self._features = [] if self._features is None else self._features
 
-        if self.ref_img.exp_id == "Calb2_SAT":
+        if self.ref_img.exp_id == "Calb2_SAT" and self.prime:
             self.load_Calb2()
 
     @property
@@ -84,6 +89,10 @@ class FeatureDataBase:
     @cached_property
     def SAT_flag(self) -> bool:
         return EXP2DAY[self.ref_img.exp_id] is SatDay
+
+    @cached_property
+    def Ai148_flag(self) -> bool:
+        return Ai148_FLAG[self.ref_img.exp_id]
 
     def load_Calb2(self):
         file_path = path.join(ROOT_PATH, FEATURE_DATA_PATH, CALB2_EXPRESSION_FILE_NAME)
@@ -95,10 +104,12 @@ class FeatureDataBase:
         for row_id in range(num_cell):
             assert features.iloc[row_id, 1] == f"cell {row_id+1}"
 
-        self._features.append(CellWiseFeature("Calb2 Mean", self.cells_uid, features["Mean"]))
-        self._features.append(CellWiseFeature("Calb2 SD", self.cells_uid, features["Mean"]))
-        self._features.append(CellWiseFeature("Calb2 Max", self.cells_uid, features["Max"]))
-        self._features.append(CellWiseFeature("Calb2", self.cells_uid, np.array(features["Mean"] >= CALB2_THRESHOLD)))
+        # self._features.append(CellWiseFeature("Calb2 Mean", self.cells_uid, features["Mean"]))
+        # self._features.append(CellWiseFeature("Calb2 SD", self.cells_uid, features["Mean"]))
+        # self._features.append(CellWiseFeature("Calb2 Max", self.cells_uid, features["Max"]))
+        molecular_identity = np.array(features["Mean"] >= CALB2_THRESHOLD)
+        self.compute_CellWiseFeature("Calb2",
+                                     lambda cell_uid, _: float(molecular_identity[self.cells_idx[cell_uid]]))
 
     def compute_DayWiseFeature(self, feature_name: str, func: Callable[[CellSession], float]):
         if feature_name in self.feature_names:
@@ -114,12 +125,13 @@ class FeatureDataBase:
             avg_matrix[cell_idx, day_idx] = nan_mean(raw_feature_dict[(cell_uid, day_id)])
 
         # insert feature into CellSession
-        for single_cs in self.ref_img.dataset:
-            if hasattr(single_cs, feature_name):
-                raise AttributeError(f"Feature '{feature_name}' already exists on {single_cs}")
-            else:
-                setattr(single_cs, feature_name, avg_matrix[
-                    self.cells_idx[single_cs.cell_uid], self.days_idx[single_cs.day_id]])
+        if self.prime:
+            for single_cs in self.ref_img.dataset:
+                if hasattr(single_cs, feature_name):
+                    raise AttributeError(f"Feature '{feature_name}' already exists on {single_cs}")
+                else:
+                    setattr(single_cs, feature_name, avg_matrix[
+                        self.cells_idx[single_cs.cell_uid], self.days_idx[single_cs.day_id]])
         self._features.append(CellDayWiseFeature(feature_name, self.cells_uid, self.days, avg_matrix))
 
     def compute_CellWiseFeature(self, feature_name: str, func: Callable[[CellUID, "FeatureDataBase"], float]):
@@ -130,11 +142,12 @@ class FeatureDataBase:
             final_array[cell_cnt] = func(cell_uid, self)
 
         # insert feature into CellSession
-        for single_cs in self.ref_img.dataset:
-            if hasattr(single_cs, feature_name):
-                raise AttributeError(f"Feature '{feature_name}' already exists on {single_cs}")
-            else:
-                setattr(single_cs, feature_name, final_array[self.cells_idx[single_cs.cell_uid]])
+        if self.prime:
+            for single_cs in self.ref_img.dataset:
+                if hasattr(single_cs, feature_name):
+                    raise AttributeError(f"Feature '{feature_name}' already exists on {single_cs}")
+                else:
+                    setattr(single_cs, feature_name, final_array[self.cells_idx[single_cs.cell_uid]])
         self._features.append(CellWiseFeature(feature_name, self.cells_uid, final_array))
 
     def average_DayWise2CellWise(self, average_feature_names: List[str] = None,
@@ -143,7 +156,7 @@ class FeatureDataBase:
             average_feature_names = [single_feature.feature_name for single_feature in self._features
                                      if isinstance(single_feature, CellDayWiseFeature)]
         if periods_dict is None:
-            periods_dict = ADVANCED_SAT_DAYS if self.SAT_flag else ADVANCED_PSE_DAYS
+            periods_dict = ADV_SAT if self.SAT_flag else ADV_PSE
         for period_name, period_list in periods_dict.items():
             for target_feature_name in average_feature_names:
                 target_feature = self.get(target_feature_name)
@@ -152,11 +165,17 @@ class FeatureDataBase:
                     f"{target_feature_name}_{period_name}",
                     lambda cell_uid, _: daywise_average(cell_uid, target_feature, period_list))
 
-    def get(self, feature_name: str) -> FeatureType:
+    def get(self, feature_name: str, day_postfix: str = None) -> FeatureType:
         assert feature_name in self.feature_names
+        target_feature_name = feature_name if day_postfix is None else feature_name + f"_{day_postfix}"
+        if target_feature_name not in self.feature_names:
+            self.average_DayWise2CellWise(
+                average_feature_names=[feature_name, ],
+                periods_dict={day_postfix: ADV_SAT[day_postfix] if self.SAT_flag else ADV_PSE[day_postfix]})
         for single_feature in self._features:
-            if single_feature.feature_name == feature_name:
+            if single_feature.feature_name == target_feature_name:
                 return single_feature
+        raise ValueError("Unknown Fetch Error!")
 
     @cached_property
     def cell_types(self) -> Dict[CellUID, CellType]:
@@ -182,4 +201,16 @@ class FeatureDataBase:
     def days_idx(self) -> Dict[DayType, int]:
         return {day: i for i, day in enumerate(self.days)}
 
+    def select(self, new_name: str, **criteria) -> "FeatureDataBase":
+        new_image = self.ref_img.select(**criteria)
+        new_feature_db = FeatureDataBase(new_name, ref_img=new_image, prime=False)
+        for old_feature in self._features:
+            old_feature_name = old_feature.feature_name
+            if isinstance(old_feature, CellDayWiseFeature):
+                new_feature_db.compute_DayWiseFeature(
+                    feature_name=old_feature_name, func=lambda single_cs: getattr(single_cs, old_feature_name))
+            elif isinstance(old_feature, CellWiseFeature):
+                new_feature_db.compute_CellWiseFeature(
+                    feature_name=old_feature_name, func=lambda cell_uid, _: old_feature.get_cell(cell_uid))
+        return new_feature_db
 

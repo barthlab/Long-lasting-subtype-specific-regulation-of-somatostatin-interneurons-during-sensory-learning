@@ -50,6 +50,7 @@ SAT_ALL_DAYS = (SatDay(i) for i in range(16))
 SAT_PLOT_DAYS = (SatDay.ACC2, SatDay.ACC3, SatDay.ACC4, SatDay.ACC5, SatDay.ACC6,
                  SatDay.SAT1, SatDay.SAT2, SatDay.SAT3, SatDay.SAT4, SatDay.SAT5,)
 
+
 class PseDay(Enum):
     ACC1 = 0
     ACC2 = 1
@@ -105,7 +106,6 @@ ADV_PSE.update({PseDay(i).name: tuple((PseDay(i),)) for i in range(16)})
 
 
 # dataclass identifier
-
 @dataclass(frozen=True, order=True)
 class CellUID:
     exp_id: str
@@ -115,6 +115,15 @@ class CellUID:
 
     def in_short(self) -> str:
         return f"{self.exp_id} {self.mice_id} FOV{self.fov_id} Cell{self.cell_id}"
+
+
+@dataclass(frozen=True, order=True)
+class MiceUID:
+    exp_id: str
+    mice_id: str
+
+    def in_short(self) -> str:
+        return f"{self.mice_id}"
 
 
 @dataclass(frozen=True, order=True)

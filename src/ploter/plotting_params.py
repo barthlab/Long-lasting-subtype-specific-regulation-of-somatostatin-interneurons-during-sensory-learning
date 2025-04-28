@@ -23,12 +23,14 @@ EVENT2COLOR = {
     BlockType.PostBlock: "blue"
 }
 OTHER_COLORS = {
-    "puff": "green",
-    "annotate": 'gray'
+    "puff": "gray",
+    "annotate": 'gray',
+    "SAT": "lightskyblue",
+    "PSE": 'lightpink'
 }
 CELLTYPE2COLOR = {
     CellType.Unknown: "gray",
-    CellType.Calb2_Pos: "red",
+    CellType.Calb2_Pos: "magenta",
     CellType.Calb2_Neg: "black",
     CellType.Put_Calb2_Neg: "brown",
     CellType.Put_Calb2_Pos: "pink",
@@ -37,8 +39,13 @@ CELLTYPE2COLOR = {
 
 # fluorescence plotting
 DY_DF_F0 = 0.5
-DISPLAY_MAX_DF_F0 = 2.5
+DISPLAY_MAX_DF_F0_Calb2 = 2.5
+DISPLAY_MAX_DF_F0_Ai148 = 3.5
 DISPLAY_MIN_DF_F0 = -0.1
+AVG_MAX_DF_F0_Calb2 = 0.75
+AVG_MAX_DF_F0_Ai148 = 1.45
+AVG_MAX_FOLD_Calb2 = 3
+AVG_MAX_FOLD_Ai148 = 3
 
 LW_SMALL_DF_F0 = 0.5
 LW_MEDIUM_DF_F0 = 1

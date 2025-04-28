@@ -32,11 +32,21 @@ def feature_responsive_flag(single_trial: Trial,
     return np.max(trial_clip) >= ratio_std * noise_level
 
 
+def feature_peak(single_trial: Trial,
+                 start_t: float, end_t: float,) -> float:
+    trial_clip = single_trial.df_f0.segment(start_t=start_t, end_t=end_t, relative_flag=True).v
+    return np.max(trial_clip)
+
+
 # Feature funcs
-compute_trial_responsive: Callable[[CellSession], float] = lambda single_cs: general_feature_interface(
-    instance_list=single_cs.trials, metric_func=feature_responsive_flag, insert_name="responsiveness",
+compute_trial_responsive: Callable[[CellSession], float] = lambda _single_cs: general_feature_interface(
+    instance_list=_single_cs.trials, metric_func=feature_responsive_flag, insert_name="responsiveness",
     func_criteria={"start_t": 0, "end_t": TEST_EVOKED_PERIOD, "ratio_std": TEST_STD_RATIO,
-                   "noise_level": single_cs.noise_level},
+                   "noise_level": _single_cs.noise_level},
+)
+compute_trial_evoked_peak: Callable[[CellSession], float] = lambda _single_cs: general_feature_interface(
+    instance_list=_single_cs.trials, metric_func=feature_peak, insert_name="evoked_peak",
+    func_criteria={"start_t": 0, "end_t": TEST_EVOKED_PERIOD,},
 )
 
 # def compute_peak(single_cs: CellSession, t_start: float, t_end: float) -> float:

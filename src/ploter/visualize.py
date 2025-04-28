@@ -117,12 +117,16 @@ def plot_image(single_image: Image, save_name: str, title: str = None,
         avg_puff_ax, avg_blank_ax, avg_spont_ax = axs[-1, col_id*3], axs[-1, col_id*3+1], axs[-1, col_id*3+2]
 
         all_trials = cell_image.trials
-        oreo(ax=avg_puff_ax, trials=general_filter(all_trials, trial_type=EventType.Puff),
+        oreo(ax=avg_puff_ax,
+             list_timeseries=[single_trial.df_f0 for single_trial in
+                              general_filter(all_trials, trial_type=EventType.Puff)],
              mean_kwargs={"color": EVENT2COLOR[EventType.Puff], "alpha": 0.7, "lw": 1},
              fill_kwargs={"color": EVENT2COLOR[EventType.Puff], "alpha": 0.2, "lw": 0})
         avg_puff_ax.axvspan(0, AP_DURATION, color=OTHER_COLORS["puff"], alpha=0.1, lw=0)
 
-        oreo(ax=avg_blank_ax, trials=general_filter(all_trials, trial_type=EventType.Blank),
+        oreo(ax=avg_blank_ax,
+             list_timeseries=[single_trial.df_f0 for single_trial in
+                              general_filter(all_trials, trial_type=EventType.Blank)],
              mean_kwargs={"color": EVENT2COLOR[EventType.Blank], "alpha": 0.7, "lw": 1},
              fill_kwargs={"color": EVENT2COLOR[EventType.Blank], "alpha": 0.2, "lw": 0})
         avg_puff_ax.spines[['right', 'top']].set_visible(False)
