@@ -1,54 +1,66 @@
 import numpy as np
-from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 
-# Your original data points (xp must be sorted)
-xp = np.array([0, 5, 10, 15, 20])
-fp = np.array([10, 50, 30, 80, 60])
+# --- Parameters ---
+num_point = 50 # Example width
 
-# Points where you want to interpolate
-x_new = np.linspace(-2, 22, 50)
+# --- Create Sample Data ---
+# Replace this with your actual boolean numpy array
+bool_array = np.random.choice([True, False], size=num_point, p=[0.6, 0.4])
+# Example: bool_array = np.array([True, False, True, True, False, ...])
 
-# --- Method 1: Using scipy.interpolate.interp1d (Recommended) ---
+# --- Reshape for imshow ---
+# imshow expects 2D data. Reshape (num_point,) -> (1, num_point)
+image_data = bool_array[np.newaxis, :]
 
-# Create the 'previous' neighbor interpolation function
-# bounds_error=False prevents errors for x_new outside xp's range
-# fill_value="extrapolate" uses the first value for x < xp[0]
-# and the last value for x > xp[-1], which is natural for 'previous'
-f_previous = interp1d(xp, fp, kind='previous', bounds_error=False, fill_value="extrapolate")
+# --- Define Coordinates for the Rectangle ---
+left_coord = -num_point / 2
+right_coord = num_point / 2
+bottom_coord = 0.0
+top_coord = 1.0
+plot_extent = (left_coord, right_coord, bottom_coord, top_coord)
 
-# Alternatively, fill with NaN outside the bounds:
-# f_previous_nan = interp1d(xp, fp, kind='previous', bounds_error=False, fill_value=np.nan)
+# --- Plotting ---
+# Create a figure and axes for the overall plot
+fig, ax = plt.subplots(figsize=(10, 4)) # Adjust figsize for the overall plot
 
-# Apply the interpolation function
-y_previous = f_previous(x_new)
-# y_previous_nan = f_previous_nan(x_new)
+# Display the boolean array data as an image at the specified coordinates
+# extent=(left, right, bottom, top) defines data coordinates
+# origin='lower': Places the [0,0] index of the array at the bottom-left corner defined by extent
+# aspect='auto': Stretches the image to fill the extent rectangle in data coordinates.
+#                Individual squares might not be visually square depending on axis scaling.
+im = ax.imshow(
+    image_data,
+    cmap='Greys',
+    interpolation='nearest',
+    extent=plot_extent,
+    origin='lower', # Important when using extent for y-coordinates 0 to 1
+    aspect='auto'   # Stretch to fill the defined extent
+)
 
-# --- For Comparison: Original np.interp (Linear) ---
-y_linear = np.interp(x_new, xp, fp)
+# --- Customize Appearance ---
+ax.set_title(f'Boolean Array Plotted from x={left_coord} to {right_coord}, y={bottom_coord} to {top_coord}')
+ax.set_xlabel("X Coordinate")
+ax.set_ylabel("Y Coordinate")
 
-# --- Visualization ---
-plt.figure(figsize=(10, 6))
-plt.plot(xp, fp, 'o', label='Original Data Points', markersize=8)
-plt.step(xp, fp, where='post', label='True Step Function (for visualization)', linestyle='--', alpha=0.7) # Helper line shows ideal steps
+# --- Set Axis Limits ---
+# **Crucial**: Set the limits wider than the rectangle to see its position
+# Adjust these limits based on other elements you might have on the plot
+ax.set_xlim(left_coord - 10, right_coord + 10) # Example padding
+ax.set_ylim(bottom_coord - 1, top_coord + 1)   # Example padding
 
-plt.plot(x_new, y_previous, label="interp1d(kind='previous')")
-plt.plot(x_new, y_linear, label="np.interp (linear)", linestyle=':', alpha=0.8)
+# Optional: Add a grid to see coordinates clearly
+ax.grid(True, linestyle='--', alpha=0.6)
 
-# Example with NaN fill
-# plt.plot(x_new, y_previous_nan, label="interp1d(kind='previous', fill_value=np.nan)", linestyle='-.')
+# Optional: Force equal aspect ratio for the axes
+# If you uncomment this, one unit on the x-axis will look the same
+# length as one unit on the y-axis. This might make the individual
+# boolean squares look more square, but could add whitespace or change
+# the overall plot shape significantly.
+# ax.set_aspect('equal', adjustable='box')
 
-plt.title('Interpolation Methods')
-plt.xlabel('X values')
-plt.ylabel('Y values')
-plt.legend()
-plt.grid(True)
+# Adjust layout
+plt.tight_layout()
+
+# Show the plot
 plt.show()
-
-# Print some specific values
-print("x | interp1d('previous') | np.interp (linear)")
-print("-" * 40)
-for x_val in [2.5, 5.0, 7.5, 14.9, 15.0, 21.0, -1.0]:
-    y_prev = f_previous(x_val)
-    y_lin = np.interp(x_val, xp, fp)
-    print(f"{x_val:<5} | {y_prev:<20} | {y_lin:<15}")

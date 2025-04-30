@@ -133,16 +133,16 @@ if __name__ == "__main__":
     #     mitten_feature.compute_DayWiseFeature("responsiveness", compute_trial_responsive)
     #     _every_fov(mitten, None if mitten_feature.Ai148_flag else mitten_feature)
     # exit()
-    #
+
     # plot Calb2 figure
-    # for exp_id in ("Calb2_SAT",):
-    #     mitten = Experiment(exp_id=exp_id)
-    #     mitten_data = mitten.image
-    #     mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
-    #     mitten_feature.compute_DayWiseFeature("responsiveness", compute_trial_responsive)
-    #     mitten_feature.compute_DayWiseFeature("evoked_peak", compute_trial_evoked_peak)
-    #     _heatmap_calb2(mitten_data, mitten_feature)
-    #     _peak_complex_calb2(mitten_data, mitten_feature)
+    for exp_id in ("Calb2_SAT",):
+        mitten = Experiment(exp_id=exp_id)
+        mitten_data = mitten.image
+        mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
+        mitten_feature.compute_DayWiseFeature("responsiveness", compute_trial_responsive)
+        mitten_feature.compute_DayWiseFeature("evoked_peak", compute_trial_evoked_peak)
+        # _heatmap_calb2(mitten_data, mitten_feature)
+        _peak_complex_calb2(mitten_data, mitten_feature)
 
     # # plot Ai148 figure
     for exp_id in ("Ai148_SAT", "Ai148_PSE"):
@@ -151,6 +151,6 @@ if __name__ == "__main__":
         mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
         mitten_feature.compute_DayWiseFeature("responsiveness", compute_trial_responsive)
         mitten_feature.compute_DayWiseFeature("evoked_peak", compute_trial_evoked_peak)
-        _heatmap_ai148(mitten_data, mitten_feature)
-        # _peak_complex_ai148(mitten_data, mitten_feature)
+        # _heatmap_ai148(mitten_data, mitten_feature)
+        _peak_complex_ai148(mitten_data, mitten_feature)
 

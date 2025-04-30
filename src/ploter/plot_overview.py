@@ -12,6 +12,7 @@ from src.config import *
 from src.feature.feature_manager import *
 from src.ploter.plotting_params import *
 from src.ploter.plotting_utils import *
+from src.ploter.statistic_annotation import *
 
 
 def plot_heatmap_overview_cellwise(
@@ -55,7 +56,7 @@ def plot_heatmap_overview_cellwise(
             grand_matrix,
             aspect=3,
             origin='upper',
-            vmin=DISPLAY_MIN_DF_F0,
+            vmin=DISPLAY_MIN_DF_F0_Ai148 if feature_db.Ai148_flag else DISPLAY_MIN_DF_F0_Calb2,
             vmax=DISPLAY_MAX_DF_F0_Ai148 if feature_db.Ai148_flag else DISPLAY_MAX_DF_F0_Calb2,
             cmap='viridis',
             interpolation='nearest'
@@ -88,7 +89,8 @@ def plot_heatmap_overview_cellwise(
         x_tick_loc, x_tick_pos = [-1, 0, 1, 2], []
         for x_tick in x_tick_loc:
             x_tick_pos.append(np.searchsorted(xs, x_tick))
-        axc[ax_id].set_ylim(DISPLAY_MIN_DF_F0, AVG_MAX_DF_F0_Ai148 if feature_db.Ai148_flag else AVG_MAX_DF_F0_Calb2)
+        axc[ax_id].set_ylim(DISPLAY_MIN_DF_F0_Ai148 if feature_db.Ai148_flag else DISPLAY_MIN_DF_F0_Calb2,
+                            AVG_MAX_DF_F0_Ai148 if feature_db.Ai148_flag else AVG_MAX_DF_F0_Calb2)
         axh[ax_id].set_xlim(np.searchsorted(xs, -2), np.searchsorted(xs, 3))
         axc[ax_id].set_xlim(np.searchsorted(xs, -2), np.searchsorted(xs, 3))
         axh[ax_id].axvline(x=np.searchsorted(xs, 0), color='red', alpha=0.7, ls='--', lw=0.5)
@@ -131,19 +133,28 @@ def plot_peak_complex(
     axs[-4].set_visible(False)
     axs[-2].set_visible(False)
     axt, axb, axc = axs[:n_img], axs[-3], axs[-1]
+    statistic_bar_cnt_1 = 0
+    statistic_bar_offset_1 = 0.1*(DISPLAY_MAX_DF_F0_Ai148 if feature_db.Ai148_flag else DISPLAY_MAX_DF_F0_Calb2)
 
     for image_id, single_select_criteria in enumerate(select_criteria_list):  # type: int, dict
         single_feature_db = feature_db.select(f"{image_id}", **single_select_criteria)
         extracted_data = extract_avg_df_f0(
             single_image=single_feature_db.ref_img,
             days_dict={group_name: days_ref[group_name] for group_name in trace_days}, **trials_criteria)
+
+        statistic_dict = []
         for group_name in trace_days:
             kwargs = kwargs_dict[image_id][group_name]
             tmp_data = extracted_data[group_name] if not by_mouse_flag else by_cell2by_mice(extracted_data[group_name])
             oreo(axt[image_id], [single_ts for single_ts in tmp_data.values()],
                  mean_kwargs={"alpha": 0.7, "lw": 1, "color": image_color[image_id], **kwargs},
                  fill_kwargs={"alpha": 0.2, "lw": 0, "color": image_color[image_id], **kwargs})
+            statistic_dict.append(tmp_data)
 
+        # comparing first two set of the timeseries, every frame do paired
+        timeseries_ttest_every_frame(axt[image_id], statistic_dict, expand=feature_db.Ai148_flag)
+
+        statistic_dict = {}
         for bar_id, bar_name in enumerate(bar_days):
             tmp_feature = single_feature_db.get(feature_name=bar_feature_name, day_postfix=bar_name)
             tmp_data = tmp_feature.by_cells if not by_mouse_flag else by_cell2by_mice(tmp_feature.by_cells)
@@ -152,6 +163,11 @@ def plot_peak_complex(
             if bar_id == 0:
                 axb.axhline(y=np.mean([single_value for single_value in tmp_data.values()]),
                             lw=1, c=image_color[image_id], ls=':', alpha=0.7)
+            statistic_dict[bar_id + image_id*bar_offset] = tmp_data
+
+        # comparing the later values to the first value
+        # with paired t-test with Bonferroni correction
+        paired_ttest_with_Bonferroni_correction(axb, statistic_dict)
 
         tmp_feature = single_feature_db.get(feature_name=curve_feature_name)
         xs = [day_id.value for day_id in single_feature_db.days]
@@ -171,8 +187,18 @@ def plot_peak_complex(
         axc.plot(xs, grand_avg, lw=1, alpha=0.7, marker='.', markersize=6, color=image_color[image_id])
         axc.fill_between(xs, grand_avg-grand_sem, grand_avg+grand_sem, lw=0, alpha=0.3, color=image_color[image_id])
 
+        # comparing one-way repeated anova
+        one_way_repeated_anova(
+            axc,
+            y_position=SIGNIFICANT_ANOVA_BAR_HEIGHT_SAT + 0.5*image_id if feature_db.SAT_flag else
+            SIGNIFICANT_ANOVA_BAR_HEIGHT_PSE,
+            data_dict={day_id: by_cell2by_mice(tmp_feature.get_day(day_id))
+                       for day_id in single_feature_db.days} if by_mouse_flag else
+            {day_id: tmp_feature.get_day(day_id) for day_id in single_feature_db.days}, color=image_color[image_id])
+
     for image_id in range(n_img):
-        axt[image_id].set_ylim(DISPLAY_MIN_DF_F0, AVG_MAX_DF_F0_Ai148 if feature_db.Ai148_flag else AVG_MAX_DF_F0_Calb2)
+        axt[image_id].set_ylim(DISPLAY_MIN_DF_F0_Ai148 if feature_db.Ai148_flag else DISPLAY_MIN_DF_F0_Calb2,
+                               AVG_MAX_DF_F0_Ai148 if feature_db.Ai148_flag else AVG_MAX_DF_F0_Calb2)
         axt[image_id].spines[['right', 'top']].set_visible(False)
         axt[image_id].axvspan(0, 0.5, lw=0, color=OTHER_COLORS['puff'], alpha=0.4)
         axt[image_id].set_xticks([0, 2])

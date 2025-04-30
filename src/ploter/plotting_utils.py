@@ -48,3 +48,19 @@ def extract_avg_df_f0(single_image: Image, days_dict: Dict[str, Tuple[DayType, .
             extracted_data[group_name][cell_uid] = avg_df_f0
     return extracted_data
 
+
+def pool_boolean_array(arr: np.ndarray, xs: np.ndarray, threshold=0.5) -> np.ndarray:
+    tmp_fs = (len(xs)-1) / (xs[-1]-xs[0])
+    window_size = int(SIGNIFICANT_TRACE_POOLING_WINDOW * tmp_fs)
+    n = arr.shape[0]
+
+    trimmed_len = n - (n % window_size)
+    if trimmed_len == 0:
+        return np.array([], dtype=bool)
+    trimmed_arr = arr[:trimmed_len]
+
+    mean_vals = trimmed_arr.reshape(-1, window_size).astype(np.float32).mean(axis=1)
+    pooled_result = mean_vals >= threshold
+    return pooled_result
+
+

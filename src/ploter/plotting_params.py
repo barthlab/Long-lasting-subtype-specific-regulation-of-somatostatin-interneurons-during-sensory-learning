@@ -5,6 +5,7 @@ from matplotlib.collections import LineCollection
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 from matplotlib.colors import Normalize
 import matplotlib.cm as cm
+from matplotlib.colors import ListedColormap
 from scipy.interpolate import splprep, splev
 
 from src.data_manager import *
@@ -41,7 +42,8 @@ CELLTYPE2COLOR = {
 DY_DF_F0 = 0.5
 DISPLAY_MAX_DF_F0_Calb2 = 2.5
 DISPLAY_MAX_DF_F0_Ai148 = 3.5
-DISPLAY_MIN_DF_F0 = -0.1
+DISPLAY_MIN_DF_F0_Calb2 = -0.1
+DISPLAY_MIN_DF_F0_Ai148 = 1.5*DISPLAY_MAX_DF_F0_Ai148*DISPLAY_MIN_DF_F0_Calb2/DISPLAY_MAX_DF_F0_Calb2
 AVG_MAX_DF_F0_Calb2 = 1.2
 AVG_MAX_DF_F0_Ai148 = 2.3
 AVG_MAX_FOLD_Calb2 = 3
@@ -58,3 +60,17 @@ ALPHA_LIGHT_DF_F0 = 0.3
 # smooth flow
 BSPLINE_SMOOTH_FACTOR = 0.1
 NUM_SMOOTH_POINTS = 100
+
+
+# Statistical test
+STATISTICAL_FONTSIZE = 3
+SIGNIFICANT_P = 0.05
+SIGNIFICANT_ALPHA = 0.05
+TEXT_OFFSET_SCALE = 1.1
+SIGNIFICANT_TRACE_Y_EXTENT = (-0.09, -0.06)
+SIGNIFICANT_TRACE_POOLING_WINDOW = 0.2  # s
+SIGNIFICANT_TRACE_COLORMAP = ListedColormap(['lightgray', 'black'])
+SIGNIFICANT_ANOVA_BAR_HEIGHT_SAT = 2
+SIGNIFICANT_ANOVA_BAR_HEIGHT_PSE = 3.3
+
+
