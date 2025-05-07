@@ -51,7 +51,9 @@ def plot_heatmap_overview_cellwise(
     for ax_id, col_name in enumerate(cols_names):
         grand_avg_df_f0, grand_sem_df_f0, (xs, grand_matrix) = sync_timeseries(
             [extracted_data[col_name][cell_uid] for cell_uid in cells_uid_order])
-
+        """
+        TODO: add extent and remove searchsorted
+        """
         im = axh[ax_id].imshow(
             grand_matrix,
             aspect=3,
@@ -133,8 +135,6 @@ def plot_peak_complex(
     axs[-4].set_visible(False)
     axs[-2].set_visible(False)
     axt, axb, axc = axs[:n_img], axs[-3], axs[-1]
-    statistic_bar_cnt_1 = 0
-    statistic_bar_offset_1 = 0.1*(DISPLAY_MAX_DF_F0_Ai148 if feature_db.Ai148_flag else DISPLAY_MAX_DF_F0_Calb2)
 
     for image_id, single_select_criteria in enumerate(select_criteria_list):  # type: int, dict
         single_feature_db = feature_db.select(f"{image_id}", **single_select_criteria)

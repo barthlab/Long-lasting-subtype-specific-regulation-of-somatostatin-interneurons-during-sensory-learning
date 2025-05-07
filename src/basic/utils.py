@@ -22,7 +22,7 @@ def read_xlsx_sheet(table_dir: str, header: None | int, sheet_id: int = 0) -> pd
 
 
 def nan_mean(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
-    if len(a) == 0:
+    if (len(a) == 0) or (np.count_nonzero(~np.isnan(a)) == 0):
         return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
@@ -30,7 +30,7 @@ def nan_mean(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
 
 
 def nan_median(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
-    if len(a) == 0:
+    if (len(a) == 0) or (np.count_nonzero(~np.isnan(a)) == 0):
         return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
@@ -38,7 +38,7 @@ def nan_median(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
 
 
 def nan_std(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
-    if len(a) == 0:
+    if (len(a) == 0) or (np.count_nonzero(~np.isnan(a)) == 0):
         return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
@@ -46,7 +46,7 @@ def nan_std(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
 
 
 def nan_sem(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
-    if len(a) == 0:
+    if (len(a) == 0) or (np.count_nonzero(~np.isnan(a)) == 0):
         return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
@@ -54,7 +54,7 @@ def nan_sem(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
 
 
 def nan_max(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
-    if len(a) == 0:
+    if (len(a) == 0) or (np.count_nonzero(~np.isnan(a)) == 0):
         return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
@@ -62,7 +62,7 @@ def nan_max(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
 
 
 def nan_min(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
-    if len(a) == 0:
+    if (len(a) == 0) or (np.count_nonzero(~np.isnan(a)) == 0):
         return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
@@ -70,7 +70,7 @@ def nan_min(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
 
 
 def nan_sum(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
-    if len(a) == 0:
+    if (len(a) == 0) or (np.count_nonzero(~np.isnan(a)) == 0):
         return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
     else:
         replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
@@ -126,5 +126,36 @@ def invert_nested_dict(input_dict: Dict[str, dict]) -> Dict[str, dict]:
         for k2, v2 in v1.items():
             result_dict[k2][k1] = v2
     return result_dict
+
+
+def reverse_dict(input_dict: dict) -> dict:
+    result_dict = defaultdict(list)
+    for _k, _v in input_dict.items():
+        result_dict[_v].append(_k)
+    return result_dict
+
+
+def decompose_cell_uid_list(cells_uid: List[CellUID]) -> dict:
+    return {
+        "exp_id": [cell_uid.exp_id for cell_uid in cells_uid],
+        "mice_id": [cell_uid.mice_id for cell_uid in cells_uid],
+        "fov_id": [cell_uid.fov_id for cell_uid in cells_uid],
+        "cell_id": [cell_uid.cell_id for cell_uid in cells_uid],
+    }
+
+
+def synthesize_cell_uid_list(cell_element_dict: dict) -> List[CellUID]:
+    for _k in ("exp_id", "mice_id", "fov_id", "cell_id"):
+        assert _k in cell_element_dict
+    cells_uid = [
+        CellUID(exp_id=tmp_exp_id, mice_id=tmp_mice_id, fov_id=tmp_fov_id, cell_id=tmp_cell_id)
+        for tmp_exp_id, tmp_mice_id, tmp_fov_id, tmp_cell_id in zip(
+            cell_element_dict["exp_id"],
+            cell_element_dict["mice_id"],
+            cell_element_dict["fov_id"],
+            cell_element_dict["cell_id"],
+        )
+    ]
+    return cells_uid
 
 

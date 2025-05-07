@@ -15,7 +15,9 @@ FIGURE_SHOW_FLAG = 0
 ROOT_PATH = (r"C:\Users\maxyc\PycharmProjects\Long-lasting-subtype-specific-regulation-"
              r"of-somatostatin-interneurons-during-sensory-learning")
 CALCIUM_DATA_PATH = "data/Calcium imaging"
+BEHAVIOR_DATA_PATH = "data/Behavior"
 FEATURE_DATA_PATH = "data/Feature"
+FEATURE_EXTRACTED_PATH = "data/Extracted Feature"
 FIGURE_PATH = "figures"
 
 # data lost
@@ -53,6 +55,8 @@ BASELINE_DAYS = "ACC456"
 # Calb2 related
 CALB2_EXPRESSION_FILE_NAME = "Expression_Calb2_SAT.xlsx"
 CALB2_THRESHOLD = 200  # A.U.
+CALB2_MINIMAL = 100  # A.U.
+CALB2_TICKS = (120, 200, 1000)  # A.U.
 
 # 2p recording parameters
 FS_2P = 5.1  # Hz

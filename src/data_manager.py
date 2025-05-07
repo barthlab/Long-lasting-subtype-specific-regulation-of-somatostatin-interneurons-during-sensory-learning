@@ -246,7 +246,8 @@ class CellSession:
 
     fluorescence: TimeSeries = field(repr=False)
     baseline: TimeSeries = field(init=False, repr=False)
-    noise_level: float = field(init=False,)
+    trial_baseline_std: float = field(init=False,)
+    overall_baseline_std: float = field(init=False,)
     df_f0: TimeSeries = field(init=False, repr=False)
     stims: Events = field(repr=False)
 
@@ -304,7 +305,8 @@ class CellSession:
             baseline_collect.append(new_trial.df_f0.segment(*TRIAL_BASELINE_RANGE, relative_flag=True).v)
         global_baseline = np.concatenate(baseline_collect)
         assert global_baseline.ndim == 1, f"Incorrect global baseline shape: {global_baseline.shape}"
-        self.noise_level = np.std(global_baseline)
+        self.trial_baseline_std = np.std(global_baseline)
+        self.overall_baseline_std = np.std(self.df_f0.v)
 
         # split spont blocks
         self.spont_blocks = [

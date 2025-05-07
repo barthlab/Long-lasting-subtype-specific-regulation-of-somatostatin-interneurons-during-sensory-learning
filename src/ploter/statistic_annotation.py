@@ -6,8 +6,8 @@ import os.path as path
 from collections import defaultdict
 
 import statsmodels.api as sm
-from statsmodels.stats.anova import AnovaRM
 from scipy import stats
+import pingouin as pg
 from statsmodels.sandbox.stats.multicomp import multipletests
 
 from src.data_manager import *
@@ -19,22 +19,22 @@ from src.ploter.plotting_params import *
 from src.ploter.plotting_utils import *
 
 
-def get_asterisks(p_value) -> Tuple[str, bool, dict]:
+def get_asterisks(p_value, double_line_flag=True) -> Tuple[str, bool, dict]:
     if p_value < 0.001:
-        asterisks = "***"
+        asterisks = r"$\ast$"*3
     elif p_value < 0.01:
-        asterisks = "**"
+        asterisks = r"$\ast$"*2
     elif p_value < 0.05:
-        asterisks = "*"
+        asterisks = r"$\ast$"
     else:
         asterisks = "n.s."
-
+    str_between = "\n" if double_line_flag else " "
     if p_value < 0.001:
         exponent = int(np.floor(np.log10(abs(p_value))))
         mantissa = p_value / 10 ** exponent
-        p_text = f"{asterisks}\np = {mantissa:.1f} × 10$^{{{exponent}}}$"
+        p_text = f"{asterisks}{str_between}p = {mantissa:.1f} × 10$^{{{exponent}}}$"
     else:
-        p_text = f"{asterisks}\n p = {p_value:.3f}"
+        p_text = f"{asterisks}{str_between}p = {p_value:.3f}"
 
     significant_flag = p_value < 0.05
     if significant_flag:
@@ -99,7 +99,7 @@ def paired_ttest_with_Bonferroni_correction(ax: matplotlib.axes.Axes, data_dict:
     print(f"\nBonferroni Corrected Results (alpha = {SIGNIFICANT_ALPHA}):")
     text_position = TEXT_OFFSET_SCALE * np.max(
         [(nan_mean(list(dict_values.values())) + nan_sem(list(dict_values.values())))
-         for dict_values in data_dict.values()])
+         for dict_key, dict_values in data_dict.items() if dict_key != keys[0]])
     for comp, (p_corr, rej) in enumerate(zip(corrected_p_values, reject)):
         print(f" - {comp}: Corrected p-value = {p_corr:.4f}, Significant = {rej}")
         p_text, _, font_kwargs = get_asterisks(p_corr)
@@ -125,9 +125,25 @@ def one_way_repeated_anova(ax: matplotlib.axes.Axes, data_dict: Dict[DayType, di
     # 'value' is the dependent variable
     # 'day' is the within-subject factor (repeated measure)
     # 'subject' is the subject identifier
-    aov = AnovaRM(data=data_rm, depvar='value', subject='subject', within=['day'])
-    res = aov.fit()
-    p_value = res.anova_table.loc["day", 'Pr > F']
+    aov = pg.rm_anova(data=data_rm,
+                      dv='value',
+                      within='day',
+                      subject='subject',
+                      detailed=True)
+    p_value = aov.loc[0, "p-unc"]
+    print(p_value)
+    print("\nRepeated Measures ANOVA Results:")
+    print(aov)
+
+    # post_hoc = pg.pairwise_ttests(data=data_rm,
+    #                               dv='value',
+    #                               within='day',
+    #                               subject='subject',
+    #                               padjust='sidak',
+    #                               effsize='hedges')
+    #
+    # print("\nPost-hoc Pairwise Comparisons (Sidak-corrected):")
+    # print(post_hoc[['A', 'B', 'p-unc', 'p-corr', 'hedges']])
 
     statistic_bar(ax, x1=start_day, x2=end_day, y=y_position, p_value=p_value, color=color)
 

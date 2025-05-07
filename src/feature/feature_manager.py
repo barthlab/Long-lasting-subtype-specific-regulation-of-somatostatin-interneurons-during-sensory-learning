@@ -4,10 +4,12 @@ from dataclasses import dataclass, field, MISSING
 from collections import defaultdict
 from typing import List, Callable, Optional, Dict, Union, Tuple
 from functools import cached_property
+import openpyxl
 
 from src.config import *
 from src.basic.utils import *
 from src.data_manager import *
+from src.feature.feature_utils import *
 
 
 @dataclass
@@ -30,6 +32,14 @@ class CellWiseFeature:
     @property
     def by_cells(self) -> Dict[CellUID, float]:
         return self._data
+
+    def standardized(self) -> "CellWiseFeature":
+        new_feature_name = self.feature_name + f"_standardized"
+        mean_value = nan_mean(self.value)
+        std_value = nan_std(self.value)
+        assert std_value != 0
+        return CellWiseFeature(feature_name=new_feature_name, cells_uid=self.cells_uid,
+                               value=(np.array(self.value) - mean_value) / std_value)
 
 
 @dataclass
@@ -89,6 +99,10 @@ class FeatureDataBase:
     @cached_property
     def SAT_flag(self) -> bool:
         return EXP2DAY[self.ref_img.exp_id] is SatDay
+
+    @cached_property
+    def days_ref(self) -> Dict[str, Tuple[DayType, ...]]:
+        return ADV_SAT if self.SAT_flag else ADV_PSE
 
     @cached_property
     def Ai148_flag(self) -> bool:
@@ -156,7 +170,7 @@ class FeatureDataBase:
             average_feature_names = [single_feature.feature_name for single_feature in self._features
                                      if isinstance(single_feature, CellDayWiseFeature)]
         if periods_dict is None:
-            periods_dict = ADV_SAT if self.SAT_flag else ADV_PSE
+            periods_dict = self.days_ref
         for period_name, period_list in periods_dict.items():
             for target_feature_name in average_feature_names:
                 target_feature = self.get(target_feature_name)
@@ -171,7 +185,7 @@ class FeatureDataBase:
         if target_feature_name not in self.feature_names:
             self.average_DayWise2CellWise(
                 average_feature_names=[feature_name, ],
-                periods_dict={day_postfix: ADV_SAT[day_postfix] if self.SAT_flag else ADV_PSE[day_postfix]})
+                periods_dict={day_postfix: self.days_ref[day_postfix]})
         for single_feature in self._features:
             if single_feature.feature_name == target_feature_name:
                 return single_feature
@@ -214,3 +228,81 @@ class FeatureDataBase:
                     feature_name=old_feature_name, func=lambda cell_uid, _: old_feature.get_cell(cell_uid))
         return new_feature_db
 
+    @cached_property
+    def feature_file_path(self) -> str:
+        return path.join(FEATURE_EXTRACTED_PATH, f"{self.name}.xlsx")
+
+    def save_features(self):
+        print(f"Saving features to {self.feature_file_path}...")
+        os.makedirs(path.dirname(self.feature_file_path), exist_ok=True)
+        with pd.ExcelWriter(self.feature_file_path, engine='xlsxwriter') as writer:
+            for single_feature in self._features:
+                sheet_name = feature_name_to_file_name(single_feature.feature_name)
+                print(f"Saving feature: {single_feature.feature_name}")
+                prefix_dict = {
+                    "feature_name": [single_feature.feature_name, ] + ["", ]*(len(single_feature.cells_uid)-1),
+                    **decompose_cell_uid_list(single_feature.cells_uid),
+                }
+                if isinstance(single_feature, CellWiseFeature):
+                    df = pd.DataFrame({**prefix_dict, 'value': single_feature.value})
+                    df.to_excel(writer, sheet_name=sheet_name, index=False)
+                elif isinstance(single_feature, CellDayWiseFeature):
+                    tmp_dict = {}
+                    for day_id in single_feature.days:
+                        tmp_dict[day_id.name] = single_feature.get_raw_day(day_id)
+                    df = pd.DataFrame({**prefix_dict, **tmp_dict})
+                    df.to_excel(writer, sheet_name=sheet_name, index=False)
+                else:
+                    raise ValueError
+        print(f"Feature sheets saved at: {self.feature_file_path}.")
+
+    def load_feature(self) -> List[str]:
+        print(f"Loading features from {self.feature_file_path}...")
+        xls = pd.ExcelFile(self.feature_file_path, engine='openpyxl')
+        loaded_features_names = []
+        for sheet_name in xls.sheet_names:
+            df = pd.read_excel(xls, sheet_name=sheet_name)
+            if df.empty:
+                raise ValueError
+            feature_name = df["feature_name"][0]
+            if feature_name in self.feature_names:
+                continue
+            print(f"Loading feature: {feature_name}")
+            loaded_features_names.append(feature_name)
+            tmp_cells_uid = synthesize_cell_uid_list({_k: df[_k].tolist()
+                                                      for _k in ("exp_id", "mice_id", "fov_id", "cell_id")})
+            assert tmp_cells_uid == self.cells_uid, \
+                f"Different cells_uid\nStored File: {tmp_cells_uid}\nCurrent Feature Database: {self.cells_uid}"
+            columns = df.columns.tolist()
+            if "value" in columns:
+                # CellWiseFeature
+                value_array = df['value'].to_numpy(dtype=float)
+                self._features.append(CellWiseFeature(
+                    feature_name=feature_name, cells_uid=tmp_cells_uid, value=value_array))
+            elif len(columns) > 6:
+                # CellDayWiseFeature
+                day_columns = columns[5:]
+                tmp_days_id = [EXP2DAY[self.ref_img.exp_id][day_str] for day_str in day_columns]
+                assert tmp_days_id == self.days, \
+                    f"Different days\nStored File: {tmp_days_id}\nCurrent Feature Database: {self.days} "
+                value_array = df[day_columns].to_numpy(dtype=float)
+                self._features.append(CellDayWiseFeature(
+                    feature_name=feature_name, cells_uid=tmp_cells_uid, days=tmp_days_id, value=value_array))
+        print("Loading complete.")
+        return loaded_features_names
+
+    def archive_exists(self) -> bool:
+        return path.exists(self.feature_file_path)
+
+    def pvalue_ttest_ind_calb2(self, features_names: List[str], selected_days: str = "ACC456") -> Dict[str, float]:
+        assert not self.Ai148_flag
+        cell_types = reverse_dict(self.cell_types)
+        p_value_dict = {}
+        for single_feature_name in features_names:
+            target_feature = self.get(feature_name=single_feature_name, day_postfix=selected_days).by_cells
+            p_value_dict[single_feature_name] = stats.ttest_ind(
+                [target_feature[cell_uid] for cell_uid in cell_types[CellType.Calb2_Pos]],
+                [target_feature[cell_uid] for cell_uid in cell_types[CellType.Calb2_Neg]],
+            ).pvalue
+
+        return dict(sorted(p_value_dict.items(), key=lambda item: item[1]))

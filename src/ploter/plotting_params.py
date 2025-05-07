@@ -7,6 +7,7 @@ from matplotlib.colors import Normalize
 import matplotlib.cm as cm
 from matplotlib.colors import ListedColormap
 from scipy.interpolate import splprep, splev
+import matplotlib.patches as mpatches
 
 from src.data_manager import *
 from src.basic.utils import *
@@ -36,7 +37,22 @@ CELLTYPE2COLOR = {
     CellType.Put_Calb2_Neg: "brown",
     CellType.Put_Calb2_Pos: "pink",
 }
+FEATURE_LABEL2COLOR ={
+    # Response probability (favorite) - vibrant red
+    "response probability feature": "#E63946",
 
+    # In-trial activity - blue spectrum
+    "in-trial activity peak features": "#1D3557",
+    "in-trial activity timing features": "#457B9D",
+    "in-trial activity center of mass features": "#A8DADC",
+    "in-trial activity area under curve features": "#48CAE4",
+
+    # Spontaneous activity - green/yellow spectrum
+    "spontaneous activity peak features": "#2A9D8F",
+    "spontaneous activity scale features": "#8AB17D",
+    "spontaneous activity center of mass features": "#E9C46A",
+    "spontaneous activity area under curve features": "#F4A261"
+}
 
 # fluorescence plotting
 DY_DF_F0 = 0.5
@@ -63,7 +79,7 @@ NUM_SMOOTH_POINTS = 100
 
 
 # Statistical test
-STATISTICAL_FONTSIZE = 3
+STATISTICAL_FONTSIZE = 5
 SIGNIFICANT_P = 0.05
 SIGNIFICANT_ALPHA = 0.05
 TEXT_OFFSET_SCALE = 1.1
