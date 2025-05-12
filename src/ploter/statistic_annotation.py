@@ -19,7 +19,7 @@ from src.ploter.plotting_params import *
 from src.ploter.plotting_utils import *
 
 
-def get_asterisks(p_value, double_line_flag=True) -> Tuple[str, bool, dict]:
+def get_asterisks(p_value, double_line_flag=True, simple_flag=False) -> Tuple[str, bool, dict]:
     if p_value < 0.001:
         asterisks = r"$\ast$"*3
     elif p_value < 0.01:
@@ -29,12 +29,15 @@ def get_asterisks(p_value, double_line_flag=True) -> Tuple[str, bool, dict]:
     else:
         asterisks = "n.s."
     str_between = "\n" if double_line_flag else " "
-    if p_value < 0.001:
-        exponent = int(np.floor(np.log10(abs(p_value))))
-        mantissa = p_value / 10 ** exponent
-        p_text = f"{asterisks}{str_between}p = {mantissa:.1f} × 10$^{{{exponent}}}$"
+    if not simple_flag:
+        if p_value < 0.001:
+            exponent = int(np.floor(np.log10(abs(p_value))))
+            mantissa = p_value / 10 ** exponent
+            p_text = f"{asterisks}{str_between}p = {mantissa:.1f} × 10$^{{{exponent}}}$"
+        else:
+            p_text = f"{asterisks}{str_between}p = {p_value:.2f}"
     else:
-        p_text = f"{asterisks}{str_between}p = {p_value:.2f}"
+        p_text = asterisks
 
     significant_flag = p_value < 0.05
     if significant_flag:
@@ -74,6 +77,29 @@ def timeseries_ttest_every_frame(ax: matplotlib.axes.Axes, data_list: List[dict]
     ax.imshow(pooled_data[np.newaxis, :], cmap=SIGNIFICANT_TRACE_COLORMAP, interpolation='nearest',
               extent=(xs[0], xs[-1], expand_ratio_low*SIGNIFICANT_TRACE_Y_EXTENT[0],
                       expand_ratio_high*SIGNIFICANT_TRACE_Y_EXTENT[1]), origin='lower', aspect='auto')
+
+
+def paired_ttest_with_Bonferroni_correction_simple_version(ax: matplotlib.axes.Axes, data_dict: Dict[float, list]):
+    keys = list(data_dict.keys())
+    raw_p_values = [
+        stats.ttest_ind(data_dict[keys[0]], data_dict[keys[i]], alternative='greater').pvalue
+        for i in range(1, len(keys))
+    ]
+    reject, corrected_p_values, _, _ = multipletests(
+        raw_p_values,
+        alpha=SIGNIFICANT_ALPHA,
+        method='bonferroni'  # Specify the correction method
+    )
+
+    print(f"\nBonferroni Corrected Results (alpha = {SIGNIFICANT_ALPHA}):")
+    text_position = TEXT_OFFSET_SCALE * np.max([
+        nan_max(dict_values) for dict_key, dict_values in data_dict.items() if dict_key != keys[0]])
+
+    for comp, (p_corr, rej) in enumerate(zip(corrected_p_values, reject)):
+        print(f" - {comp}: Corrected p-value = {p_corr:.4f}, Significant = {rej}")
+        p_text, _, font_kwargs = get_asterisks(p_corr, simple_flag=True)
+        ax.text(keys[comp+1], text_position, p_text, **font_kwargs,
+                horizontalalignment='center', verticalalignment='center')
 
 
 def paired_ttest_with_Bonferroni_correction(ax: matplotlib.axes.Axes, data_dict: Dict[float, dict]):

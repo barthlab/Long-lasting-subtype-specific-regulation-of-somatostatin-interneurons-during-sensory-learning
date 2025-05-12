@@ -116,15 +116,13 @@ class VectorSpace:
         return len(self._embeddings)
 
     def get_embeddings(self, top_k: int = 1, **criteria) -> List[Embedding]:
+        top_k = top_k if top_k > 0 else self.n_embeddings
         satisfied_embeddings = []
         for single_embed in self._embeddings:
             if all(single_embed.params.get(k, None) == v for k, v in criteria.items()):
                 satisfied_embeddings.append(single_embed)
             if len(satisfied_embeddings) >= top_k:
                 return satisfied_embeddings
-        if len(satisfied_embeddings) < top_k:
-            raise ValueError(f"Found {len(satisfied_embeddings)} embeddings "
-                             f"(less than {top_k}) under criterion {criteria}.")
         return satisfied_embeddings
 
     @property

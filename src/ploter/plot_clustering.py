@@ -17,24 +17,26 @@ from src.ploter.plotting_utils import *
 from src.ploter.statistic_annotation import *
 
 
-def single_plot_embedding(ax: matplotlib.axes.Axes, single_embed: Embedding, cell_types: Dict[CellUID, CellType]):
+def single_plot_embedding(ax: matplotlib.axes.Axes, single_embed: Embedding,
+                          cell_types: Dict[CellUID, CellType], legend_flag: bool = True,
+                          s: float = 3, mini: bool = False):
     embedding_coordinate = single_embed.embedding
     celltype_colors = [CELLTYPE2COLOR[cell_types[cell_uid]] for cell_uid in single_embed.cells_uid]
-
-    for cluster_id in range(single_embed.n_cluster):
-        cluster_points = embedding_coordinate[single_embed.labels == cluster_id]
-        center = np.mean(cluster_points, axis=0)
-        v, w = np.linalg.eigh(np.cov(cluster_points.T))
-        v = 2.5 * np.sqrt(v)
-        angle = np.degrees(np.arctan2(w[1, 0], w[0, 0]))
-        ellipse = mpatches.Ellipse(center, width=v[0] * 2, height=v[1] * 2, angle=angle,
-                                   edgecolor=CLUSTER_COLORLIST[cluster_id],
-                                   facecolor=mcolors.to_rgba(CLUSTER_COLORLIST[cluster_id], 0.2),
-                                   linestyle='--', linewidth=2, alpha=0.2)
-        ax.add_patch(ellipse)
+    if not mini:
+        for cluster_id in range(single_embed.n_cluster):
+            cluster_points = embedding_coordinate[single_embed.labels == cluster_id]
+            center = np.mean(cluster_points, axis=0)
+            v, w = np.linalg.eigh(np.cov(cluster_points.T))
+            v = 2.5 * np.sqrt(v)
+            angle = np.degrees(np.arctan2(w[1, 0], w[0, 0]))
+            ellipse = mpatches.Ellipse(center, width=v[0] * 2, height=v[1] * 2, angle=angle,
+                                       edgecolor=CLUSTER_COLORLIST[cluster_id],
+                                       facecolor=mcolors.to_rgba(CLUSTER_COLORLIST[cluster_id], 0.2),
+                                       linestyle='--', linewidth=0.5, alpha=0.2)
+            ax.add_patch(ellipse)
 
     ax.scatter(embedding_coordinate[:, 0], embedding_coordinate[:, 1],
-               s=15, alpha=0.7, edgecolor='none', facecolor=celltype_colors)
+               s=s, alpha=0.7, edgecolor='none', facecolor=celltype_colors)
 
     legend_handles = []
     cluster_cells = reverse_dict(single_embed.label_by_cell)
@@ -45,10 +47,10 @@ def single_plot_embedding(ax: matplotlib.axes.Axes, single_embed: Embedding, cel
         legend_handles.append(plt.Line2D(
             [0], [0], marker='o', linestyle="None", alpha=0.2,
             label=label_text + cnt_str, markeredgecolor="none", markerfacecolor=CLUSTER_COLORLIST[cluster_id], ))
-
-    ax.set_xlabel("UMAP-1")
-    ax.set_ylabel("UMAP-2")
-    ax.set_title(f"Score: {single_embed.score:.3f} ({single_embed.n_cluster} clusters)")
+    if not mini:
+        ax.set_xlabel("UMAP-1")
+        ax.set_ylabel("UMAP-2")
+        ax.set_title(f"Score: {single_embed.score:.3f} ({single_embed.n_cluster} clusters)")
     ax.set_aspect("equal", adjustable='box')
     ax.spines[['right', 'top']].set_visible(False)
 
@@ -60,7 +62,8 @@ def single_plot_embedding(ax: matplotlib.axes.Axes, single_embed: Embedding, cel
     legend_handles.append(plt.Line2D(
         [0], [0], linestyle="None", marker="o", markerfacecolor=CELLTYPE2COLOR[CellType.Calb2_Neg],
         markeredgecolor='none', label=f"{CELLTYPE2STR[CellType.Calb2_Neg]} ({n_neg})"))
-    ax.legend(handles=legend_handles, frameon=False, fontsize=5, title_fontsize=5, loc='best')
+    if legend_flag:
+        ax.legend(handles=legend_handles, frameon=False, fontsize=5, title_fontsize=5, loc='best')
 
 
 def plot_embedding_summary(
@@ -169,6 +172,81 @@ def plot_umap_space_distance_calb2(
     fig.tight_layout()
     quick_save(fig, save_name2)
     plt.close(fig)
+
+
+def plot_embedding_n_neighbor_distribution(
+        vec_space: VectorSpace, save_name: str, top_k: int = 3,
+):
+    cell_types = vec_space.ref_feature_db.cell_types
+    for clustering_method in ("DBSCAN", "KMEANS", "SPECTRAL"):
+        selected_embeddings = vec_space.get_embeddings(top_k=-1, clustering=clustering_method)
+        average_score = []
+        fig, axs = plt.subplots(top_k, len(PLOTTING_CLUSTERS_OPTIONS),)
+        for col_id, cluster_num in enumerate(PLOTTING_CLUSTERS_OPTIONS):
+            tmp_embed_list = sorted(general_filter(selected_embeddings, n_cluster=cluster_num),
+                                    key=lambda x: x.score, reverse=True)
+            for row_id, single_embed in enumerate(tmp_embed_list[:top_k]):
+                single_plot_embedding(axs[row_id, col_id], single_embed, cell_types,
+                                      legend_flag=False, s=5)
+                # axs[row_id, col_id].xaxis.tick_top()
+                # axs[row_id, col_id].xaxis.set_label_position('top')
+                axs[row_id, col_id].set_xlabel(f"UMAP-1")
+                axs[row_id, col_id].set_xticks([])
+                axs[row_id, col_id].set_ylabel(f"UMAP-2")
+                axs[row_id, col_id].set_yticks([])
+                axs[row_id, col_id].set_title(f"score: {single_embed.score:.2f}")
+            average_score.append([single_embed.score for single_embed in tmp_embed_list])
+        fig.set_size_inches(5, 3)
+        fig.tight_layout()
+        quick_save(fig, save_name+clustering_method+"_top3_example.png")
+
+        fig_s, ax_s = plt.subplots(1, 1,)
+        bar_position = np.arange(len(PLOTTING_CLUSTERS_OPTIONS))
+        bar_heights = [np.mean(group) for group in average_score]
+        bar_error = [nan_sem(group) for group in average_score]
+        ax_s.bar(bar_position, bar_heights, yerr=bar_error, alpha=0.7, color='black', capsize=2)
+        for group_id, group in enumerate(average_score):
+            x_jitter = np.random.normal(loc=group_id, scale=0.15, size=len(group))
+            x_jitter = np.clip(x_jitter, group_id - 0.3, group_id + 0.3)
+
+            ax_s.scatter(x_jitter, group, alpha=0.3, s=3, color='black', linewidth=0.5)
+
+        bar_dict = {1: average_score[1], **{i: average_score[i] for i in range(len(average_score))}}
+        paired_ttest_with_Bonferroni_correction_simple_version(ax_s, bar_dict)
+        ax_s.set_xlabel(f"Cluster number")
+        ax_s.set_xticks(bar_position, PLOTTING_CLUSTERS_OPTIONS)
+        ax_s.set_ylabel(f"Silhouette score")
+        ax_s.yaxis.grid(True, linestyle='--', lw=0.5, color='grey', alpha=0.5)
+        ax_s.spines[['right', 'top',]].set_visible(False)
+        fig_s.set_size_inches(2.5, 2)
+        fig_s.tight_layout()
+        quick_save(fig_s, save_name+clustering_method+"_score_dist.png")
+
+
+def plot_umap_hyperparams_distribution(
+        vec_space: VectorSpace, save_name: str,
+):
+    cell_types = vec_space.ref_feature_db.cell_types
+    fig, axs = plt.subplots(len(UMAP_N_NEIGHBORS_OPTIONS), len(UMAP_MIN_DIST_OPTIONS))
+    for row_id, n_neighbors_option in enumerate(UMAP_N_NEIGHBORS_OPTIONS):
+        for col_id, min_dist_option in enumerate(UMAP_MIN_DIST_OPTIONS):
+            single_embed = vec_space.get_embeddings(
+                top_k=1, umap_n_neighbors=n_neighbors_option, umap_min_dist=min_dist_option, umap_random_state=42)[0]
+            single_plot_embedding(axs[row_id, col_id], single_embed, cell_types,
+                                  legend_flag=False, s=3, mini=True)
+            # axs[row_id, col_id].xaxis.tick_top()
+            # axs[row_id, col_id].xaxis.set_label_position('top')
+            # axs[row_id, col_id].set_xlabel(f"UMAP-1")
+            axs[row_id, col_id].set_xticks([])
+            # axs[row_id, col_id].set_ylabel(f"UMAP-2")
+            axs[row_id, col_id].set_yticks([])
+            # axs[row_id, col_id].set_title(f"score: {single_embed.score:.2f}")
+    fig.set_size_inches(7, 7)
+    fig.tight_layout()
+    quick_save(fig, save_name)
+
+
+
 
 
 

@@ -196,4 +196,3 @@ def plot_vector_space_distance_calb2(
     plt.close(fig)
 
 
-
