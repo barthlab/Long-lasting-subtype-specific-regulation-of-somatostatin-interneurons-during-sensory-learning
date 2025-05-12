@@ -9,6 +9,7 @@ from src.basic.data_operator import *
 from src.config import *
 from src.feature.feature_manager import *
 from src.ploter.plotting_params import *
+import seaborn as sns
 
 
 def quick_save(fig, save_name):
@@ -33,22 +34,6 @@ def oreo_bar(ax: matplotlib.axes.Axes, list_values: List[float], x_position: flo
     ax.bar(x_position, mean_bar, yerr=sem_bar, error_kw=dict(lw=1, capsize=1, capthick=1), width=width, **kwargs)
 
 
-def extract_avg_df_f0(single_image: Image, days_dict: Dict[str, Tuple[DayType, ...]], **trials_criteria) \
-        -> Dict[str, Dict[CellUID, TimeSeries]]:
-    extracted_data = defaultdict(dict)
-    for group_name, group_of_days in days_dict.items():
-        sub_image = single_image.select(day_id=group_of_days)
-        sub_image_cell_split = sub_image.split("cell_uid")
-        for cell_uid in single_image.cells_uid:
-            all_trials = chain.from_iterable([single_cs.trials for single_cs in sub_image_cell_split[cell_uid].dataset])
-            selected_trials = general_filter(all_trials, **trials_criteria)
-            if len(selected_trials) == 0:
-                raise ZeroDivisionError(f"Found zero available trials in {group_name} {cell_uid}")
-            avg_df_f0, *_ = sync_timeseries([single_trial.df_f0 for single_trial in selected_trials])
-            extracted_data[group_name][cell_uid] = avg_df_f0
-    return extracted_data
-
-
 def pool_boolean_array(arr: np.ndarray, xs: np.ndarray, threshold=0.5) -> np.ndarray:
     tmp_fs = (len(xs)-1) / (xs[-1]-xs[0])
     window_size = int(SIGNIFICANT_TRACE_POOLING_WINDOW * tmp_fs)
@@ -64,5 +49,12 @@ def pool_boolean_array(arr: np.ndarray, xs: np.ndarray, threshold=0.5) -> np.nda
     return pooled_result
 
 
-
+def row_col_from_n_subplots(n_subplots: int) -> Tuple[int, int]:
+    n_row = int(np.floor(np.sqrt(n_subplots)))
+    if n_subplots == n_row * n_row:
+        return n_row, n_row
+    elif n_subplots <= n_row*(n_row+1):
+        return n_row, n_row+1
+    else:
+        return n_row+1, n_row+1
 

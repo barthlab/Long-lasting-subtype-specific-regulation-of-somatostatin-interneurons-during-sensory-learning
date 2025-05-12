@@ -34,7 +34,7 @@ def get_asterisks(p_value, double_line_flag=True) -> Tuple[str, bool, dict]:
         mantissa = p_value / 10 ** exponent
         p_text = f"{asterisks}{str_between}p = {mantissa:.1f} × 10$^{{{exponent}}}$"
     else:
-        p_text = f"{asterisks}{str_between}p = {p_value:.3f}"
+        p_text = f"{asterisks}{str_between}p = {p_value:.2f}"
 
     significant_flag = p_value < 0.05
     if significant_flag:
@@ -44,7 +44,7 @@ def get_asterisks(p_value, double_line_flag=True) -> Tuple[str, bool, dict]:
     return p_text, significant_flag, font_kwargs
 
 
-def statistic_bar(ax: matplotlib.axes.Axes, x1: float, x2: float, y: float, p_value: float, color: str):
+def statistic_bar(ax: matplotlib.axes.Axes, x1: float, x2: float, y: float, p_value: float, color: str = 'black'):
     p_text, significant_flag, font_kwargs = get_asterisks(p_value)
     if significant_flag:
         lw, alpha = 0.5, 0.8

@@ -143,4 +143,12 @@ class CellType(Enum):
     Put_Calb2_Pos = 3
 
 
+CELLTYPE2STR = {
+    CellType.Unknown: "Unk.",
+    CellType.Calb2_Neg: "SST-O",
+    CellType.Calb2_Pos: "SST-Calb2",
+    CellType.Put_Calb2_Neg: "putative SST-O",
+    CellType.Put_Calb2_Pos: "putative SST-Calb2",
+}
+
 

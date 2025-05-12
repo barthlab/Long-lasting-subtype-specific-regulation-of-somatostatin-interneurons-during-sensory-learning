@@ -18,8 +18,6 @@ from src.behavior.behavior_manager import *
 
 
 def plot_heatmap_licks(single_mice: BehaviorMice, save_name: str):
-    for single_trial in single_mice.trials:
-        print(single_trial.elapsed_day, single_trial.lick_times[:5])
     lick_times_list = []
     elapsed_days_list = []
     trial_types_list = []

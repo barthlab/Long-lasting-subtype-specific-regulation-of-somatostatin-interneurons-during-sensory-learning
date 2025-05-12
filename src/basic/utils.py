@@ -1,7 +1,7 @@
 import pandas as pd
 from scipy.io import loadmat, savemat
 from typing import Optional, List, Iterable
-from collections import defaultdict
+from collections import defaultdict, Counter
 import numpy as np
 import scipy.signal as signal
 from scipy import stats
@@ -158,4 +158,12 @@ def synthesize_cell_uid_list(cell_element_dict: dict) -> List[CellUID]:
     ]
     return cells_uid
 
+
+def calb2_pos_neg_count(cells_uid: List[CellUID], cell_type_dict: Dict[CellUID, CellType]) \
+        -> Tuple[int, int, float, str]:
+    n_pos = Counter([cell_type_dict[cell_uid] for cell_uid in cells_uid])[CellType.Calb2_Pos]
+    n_neg = Counter([cell_type_dict[cell_uid] for cell_uid in cells_uid])[CellType.Calb2_Neg]
+    pos_ratio = 100*n_pos/(n_pos+n_neg)
+    summary_string = f" +{n_pos} -{n_neg} {int(pos_ratio)}%"
+    return n_pos, n_neg, pos_ratio, summary_string
 

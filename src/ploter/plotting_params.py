@@ -1,11 +1,10 @@
 import matplotlib.pyplot as plt
-import matplotlib.patches as ptchs
 import matplotlib
 from matplotlib.collections import LineCollection
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
-from matplotlib.colors import Normalize
 import matplotlib.cm as cm
-from matplotlib.colors import ListedColormap
+import matplotlib.colors as mcolors
+from matplotlib.colors import ListedColormap, Normalize
 from scipy.interpolate import splprep, splev
 import matplotlib.patches as mpatches
 
@@ -89,4 +88,7 @@ SIGNIFICANT_TRACE_COLORMAP = ListedColormap(['lightgray', 'black'])
 SIGNIFICANT_ANOVA_BAR_HEIGHT_SAT = 2
 SIGNIFICANT_ANOVA_BAR_HEIGHT_PSE = 3.3
 
+
+# clustering
+CLUSTER_COLORLIST = list(mcolors.TABLEAU_COLORS.values())*2
 

@@ -79,12 +79,13 @@ class BehaviorMice:
             file_start_dt = parser_start_time_from_filename(file_path)
             df_part = pd.read_csv(file_path, header=None, names=TXT_FILE_COL)
             if i == 0:
-                self.start_time_exp = file_start_dt
+                self.start_time_exp = file_start_dt if self.mice_id not in MISALIGNED_MICE_RECORDING_START else\
+                    MISALIGNED_MICE_RECORDING_START[self.mice_id]
                 first_file_start_dt = file_start_dt
             else:
                 time_diff = file_start_dt - first_file_start_dt
                 df_part['TimeS'] += time_diff.total_seconds()
-            df_part['AbsTime'] = self.start_time_exp + pd.to_timedelta(df_part['TimeS'], unit='s')
+            df_part['AbsTime'] = first_file_start_dt + pd.to_timedelta(df_part['TimeS'], unit='s')
             all_data.append(df_part)
         self.raw_df = pd.concat(all_data, ignore_index=True)
         print(f"Experiment start time: {self.start_time_exp}")
@@ -135,6 +136,8 @@ class BehaviorMice:
             assert group["IsGo"].nunique() + group["IsNoGo"].nunique() == 1
             is_go_flag = group["IsGo"].nunique() == 1
 
+            if group['TrialOnsetAbsTime_fill'].unique()[0] < self.start_time_exp:
+                continue
             self.trials.append(BehaviorTrial(
                 exp_id=self.exp_id,
                 mice_id=self.mice_id,
@@ -144,7 +147,7 @@ class BehaviorMice:
                 trial_start=group['TrialOnsetAbsTime_fill'].unique()[0],
                 trial_type=BehaviorTrialType.Go if is_go_flag else BehaviorTrialType.NoGo
             ))
-        print(self.trials[-1])
+        # print(self.trials[-1])
 
     @cached_property
     def data_path(self) -> str:

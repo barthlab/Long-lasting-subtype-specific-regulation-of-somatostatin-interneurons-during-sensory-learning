@@ -2,6 +2,7 @@ import numpy as np
 import os
 import os.path as path
 from enum import Enum
+from datetime import datetime, timedelta
 
 from src.basic.terminology import *
 
@@ -27,3 +28,8 @@ BINARY = ['white', 'black']
 class BehaviorTrialType(Enum):
     Go = 1
     NoGo = 0
+
+
+MISALIGNED_MICE_RECORDING_START = {
+    "M031": datetime(2021, 11, 9, 12, 0, 0)
+}

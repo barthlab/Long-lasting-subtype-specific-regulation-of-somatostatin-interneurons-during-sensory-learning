@@ -50,3 +50,19 @@ def by_cell2by_mice(dict_by_cell: Dict[CellUID, Any]) -> Dict[MiceUID, Any]:
 
 def brightness(ts: TimeSeries) -> float:
     return np.mean(ts.segment(start_t=0, end_t=1., relative_flag=True).v)
+
+
+def extract_avg_df_f0(single_image: Image, days_dict: Dict[str, Tuple[DayType, ...]], **trials_criteria) \
+        -> Dict[str, Dict[CellUID, TimeSeries]]:
+    extracted_data = defaultdict(dict)
+    for group_name, group_of_days in days_dict.items():
+        sub_image = single_image.select(day_id=group_of_days)
+        sub_image_cell_split = sub_image.split("cell_uid")
+        for cell_uid in single_image.cells_uid:
+            all_trials = chain.from_iterable([single_cs.trials for single_cs in sub_image_cell_split[cell_uid].dataset])
+            selected_trials = general_filter(all_trials, **trials_criteria)
+            if len(selected_trials) == 0:
+                raise ZeroDivisionError(f"Found zero available trials in {group_name} {cell_uid}")
+            avg_df_f0, *_ = sync_timeseries([single_trial.df_f0 for single_trial in selected_trials])
+            extracted_data[group_name][cell_uid] = avg_df_f0
+    return extracted_data
