@@ -58,6 +58,11 @@ CALB2_THRESHOLD = 200  # A.U.
 CALB2_MINIMAL = 100  # A.U.
 CALB2_TICKS = (120, 200, 1000)  # A.U.
 
+
+def CALB2_RESIZE_FUNC(x):
+    return np.log10(x - CALB2_MINIMAL)
+
+
 # 2p recording parameters
 FS_2P = 5.1  # Hz
 DT = 1/FS_2P  # s
@@ -79,7 +84,7 @@ BLOCK_POST_TRIAL = 5  # s
 LAST_BLOCK_LEN = 10 + BLOCK_POST_TRIAL  # s
 
 # Feature extraction related
-TEST_EVOKED_PERIOD = 1  # s
+TEST_EVOKED_PERIOD = 2  # s
 TEST_STD_RATIO = 5  # 5 std pretty good
 RESPONSE_THRESHOLD = 0.01  # p
 

@@ -20,7 +20,7 @@ from src.ploter.statistic_annotation import *
 
 def plot_single_feature_Calb2(
         feature_db: FeatureDataBase, save_name: str, feature_name: str,
-        selected_days: str = "ACC456", calb2_func=lambda x: np.log10(x - CALB2_MINIMAL),
+        selected_days: str = "ACC456", calb2_func=CALB2_RESIZE_FUNC,
 ):
     assert not feature_db.Ai148_flag
 

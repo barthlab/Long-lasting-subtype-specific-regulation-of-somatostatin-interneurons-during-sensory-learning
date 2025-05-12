@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import os.path as path
@@ -7,6 +8,7 @@ from src.basic.utils import *
 from src.basic.data_operator import *
 from src.config import *
 from src.feature.feature_manager import *
+from src.feature.clustering_params import *
 from src.ploter.plotting_params import *
 from src.ploter.plotting_utils import *
 
@@ -158,92 +160,62 @@ def plot_image(single_image: Image, save_name: str, title: str = None,
 
 
 def plot_plasticity_manifold(features: FeatureDataBase, save_name: str):
-    features.compute_DayWiseFeature("EvokedPeak", compute_evoked_peak)
-    features.compute_DayWiseFeature("ResponseProb", compute_response_prob)
+    def dot_resize(x):
+        return np.log(x)
+    evoked_peak_acc456 = features.get(EVOKED_RESPONSE_FEATURE, day_postfix="ACC456")
+    evoked_peak_sat123 = features.get(EVOKED_RESPONSE_FEATURE, day_postfix="SAT123")
+    evoked_peak_sat456 = features.get(EVOKED_RESPONSE_FEATURE, day_postfix="SAT456")
 
-    for period_name, period_list in zip(
-        ["ACC456", "SAT123", "SAT456",], [[3, 4, 5], [6, 7, 8], [9, 10, 11]]
-    ):
-        for target_feature_name in ("EvokedPeak", "ResponseProb",):
-            features.compute_CellWiseFeature(
-                f"{target_feature_name}_{period_name}",
-                lambda cell_uid, features: daywise_average(
-                    cell_uid, features, target_feature_name, period_list))
-
-    evoked_peak, response_prob = features.get("EvokedPeak"), features.get("ResponseProb")
-    evoked_peak_acc456, response_prob_acc456 = features.get("EvokedPeak_ACC456"), features.get("ResponseProb_ACC456")
-    evoked_peak_sat123, response_prob_sat123 = features.get("EvokedPeak_SAT123"), features.get("ResponseProb_SAT123")
-    evoked_peak_sat456, response_prob_sat456 = features.get("EvokedPeak_SAT456"), features.get("ResponseProb_SAT456")
-    calb2 = features.get("Calb2")
+    cells_types = features.cell_types
     calb2_mean = features.get("Calb2 Mean")
 
     fig = plt.figure()
-    ax_3d1 = fig.add_subplot(1, 3, 1, projection='3d')
-    ax_3d2 = fig.add_subplot(1, 3, 2, projection='3d')
-    ax_2d = fig.add_subplot(1, 3, 3)
-    for cell_cnt, cell_uid in enumerate(features.cells_uid):
-        evoked_peak_s = evoked_peak_sat123.get_cell(cell_uid)
-        response_prob_s = response_prob_sat123.get_cell(cell_uid)
-        evoked_peak_e = evoked_peak_sat456.get_cell(cell_uid)
-        response_prob_e = response_prob_sat456.get_cell(cell_uid)
-        cell_calb2_intensity = calb2_mean.get_cell(cell_uid)
+    ax3d_left = fig.add_subplot(2, 2, 1, projection='3d')
+    ax2d_left = fig.add_subplot(2, 2, 3, sharex=ax3d_left, sharey=ax3d_left)
+    ax3d_right = fig.add_subplot(2, 2, 2, projection='3d', sharex=ax3d_left, sharey=ax3d_left, sharez=ax3d_left)
+    ax2d_right = fig.add_subplot(2, 2, 4, sharex=ax3d_left, sharey=ax3d_left)
 
-        s_point = np.array((np.log(0.1 + evoked_peak_s), 100*response_prob_s, np.log(cell_calb2_intensity-60)))
-        e_point = np.array((np.log(0.1 + evoked_peak_e), 100*response_prob_e, np.log(cell_calb2_intensity-60)))
+    calb2_intensity = [CALB2_RESIZE_FUNC(calb2_mean.get_cell(cell_uid)) for cell_uid in features.cells_uid]
+    left_dots = [
+        [dot_resize(evoked_peak_acc456.get_cell(cell_uid)) for cell_uid in features.cells_uid],
+        [dot_resize(evoked_peak_sat123.get_cell(cell_uid)) for cell_uid in features.cells_uid],
+        calb2_intensity,
+    ]
+    right_dots = [
+        [dot_resize(evoked_peak_sat123.get_cell(cell_uid)) for cell_uid in features.cells_uid],
+        [dot_resize(evoked_peak_sat456.get_cell(cell_uid)) for cell_uid in features.cells_uid],
+        calb2_intensity,
+    ]
+    dot_colors = [CELLTYPE2COLOR[cells_types[cell_uid]] for cell_uid in features.cells_uid]
 
-        num_segments = 20
-        t = np.linspace(0, 1, num_segments)
-        cmap = cm.get_cmap("Reds") if calb2.get_cell(cell_uid) == 1 else cm.get_cmap("Greys")
-        colors = [cmap(i / num_segments) for i in range(num_segments)]
-        points = np.array([s_point + (e_point - s_point) * i for i in t])
+    ax3d_left.scatter(left_dots[0], left_dots[1], left_dots[2], color=dot_colors, alpha=0.7, s=8, clip_on=False)
+    ax2d_left.scatter(left_dots[0], left_dots[1], color=dot_colors, alpha=0.7, s=8, clip_on=False)
+    ax3d_right.scatter(right_dots[0], right_dots[1], right_dots[2], color=dot_colors, alpha=0.7, s=8, clip_on=False)
+    ax2d_right.scatter(right_dots[0], right_dots[1], color=dot_colors, alpha=0.7, s=8, clip_on=False)
 
-        segments = [(points[i], points[i + 1]) for i in range(len(points) - 1)]
-        lc = Line3DCollection(segments, colors=colors, linewidths=2, alpha=0.5)
-        ax_3d1.add_collection3d(lc)
-        lc = Line3DCollection(segments, colors=colors, linewidths=2, alpha=0.5)
-        ax_3d2.add_collection3d(lc)
-
-        segments = [(points[i, :2], points[i + 1, :2]) for i in range(len(points) - 1)]
-        lc = LineCollection(segments, colors=colors, linewidths=2, alpha=0.5)
-        ax_2d.add_collection(lc)
-
-        ax_3d1.scatter(*e_point, color=CELLTYPE2COLOR[features.cell_types[cell_uid]], alpha=0.7, s=10)
-        ax_3d2.scatter(*e_point, color=CELLTYPE2COLOR[features.cell_types[cell_uid]], alpha=0.7, s=10)
-        ax_2d.scatter(*e_point[:2], color=CELLTYPE2COLOR[features.cell_types[cell_uid]], alpha=0.7, s=10)
-
-        # ax_3d1.scatter(*s_point, color=CELLTYPE2COLOR[features.cell_types[cell_uid]], alpha=0.7, s=10)
-        # ax_3d2.scatter(*s_point, color=CELLTYPE2COLOR[features.cell_types[cell_uid]], alpha=0.7, s=10)
-        # ax_2d.scatter(*s_point[:2], color=CELLTYPE2COLOR[features.cell_types[cell_uid]], alpha=0.7, s=10)
-
-    x_coords = [0.1, 0.5, 1, 1.5]
-    y_coords = [0, 20, 40, 60, 80, 100]
-    z_coords = [100, 200, 300, 400, 500]
-    for tmp_ax in (ax_3d1, ax_3d2, ax_2d):
-        tmp_ax.autoscale_view()
-        tmp_ax.set_xlim(-3, 1)
-        tmp_ax.set_ylim(-10, 110)
-        tmp_ax.set_xticks(np.log(0.1 + np.array(x_coords)), x_coords)
-        tmp_ax.set_yticks(y_coords)
-        tmp_ax.set_xlabel(r"Evoked Response [$\Delta F/F_0$]")
-        tmp_ax.set_ylabel("Response Probability [%]")
-    for tmp_ax in (ax_3d1, ax_3d2,):
-        tmp_ax.set_zlim(4.5, 8.0)
-        tmp_ax.set_zticks(np.log(np.array(z_coords)-60), z_coords)
-        tmp_ax.set_zlabel("mCherry Fluorescence [A.U.]")
-    ax_2d.spines[['right', 'top']].set_visible(False)
-    ax_3d1.view_init(elev=30, azim=-45)
-    ax_3d2.view_init(elev=0, azim=-45)
-
-
-    fig.subplots_adjust(wspace=0.2)
-
-    fig.set_size_inches(18, 4)
+    for tmp_ax in (ax3d_left, ax2d_left):
+        tmp_ax.set_xlabel(f"Evoked Response\nat ACC456 (log-{DF_F0_STR})")
+        tmp_ax.set_ylabel(f"Evoked Response\nat SAT123 (log-{DF_F0_STR})")
+    for tmp_ax in (ax3d_right, ax2d_right):
+        tmp_ax.set_xlabel(f"Evoked Response\nat SAT123 (log-{DF_F0_STR})")
+        tmp_ax.set_ylabel(f"Evoked Response\nat SAT456 (log-{DF_F0_STR})")
+    yy, zz = np.meshgrid(np.linspace(-3, 1, 50), np.linspace(1, 3.5, 50))
+    zticklabels = np.array([150, 200, 300, 900])
+    for tmp_ax in (ax3d_left, ax3d_right):
+        surf = tmp_ax.plot_surface(yy, yy, zz, color='gray', alpha=0.8)
+        tmp_ax.set_zlabel(f"Calb2 intensity (A.U.)")
+        tmp_ax.view_init(elev=0, azim=-135)
+        tmp_ax.set_box_aspect(aspect=(1, 1, 1))
+        tmp_ax.set_zticks(CALB2_RESIZE_FUNC(zticklabels), zticklabels)
+    for tmp_ax in (ax2d_left, ax2d_right):
+        tmp_ax.spines[['right', 'top']].set_visible(False)
+        tmp_ax.plot(np.linspace(-3, 1, 50), np.linspace(-3, 1, 50),
+                    ls='--', color='gray', alpha=0.8, lw=1)
+        tmp_ax.set_aspect(1)
+    for tmp_ax in (ax3d_left, ax3d_right, ax2d_left, ax2d_right):
+        tmp_ax.set_xlim(-3.5, 1.5)
+        tmp_ax.set_ylim(-3.5, 1.5)
+    fig.set_size_inches(7, 6)
     fig.tight_layout()
+    quick_save(fig, save_name)
 
-    if FIGURE_SHOW_FLAG:
-        plt.show()
-    else:
-        save_path = path.join(ROOT_PATH, FIGURE_PATH, save_name)
-        os.makedirs(path.dirname(save_path), exist_ok=True)
-        fig.savefig(save_path, bbox_inches='tight', dpi=300)
-    plt.close(fig)

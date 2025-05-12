@@ -17,11 +17,8 @@ if __name__ == "__main__":
         mitten_data = mitten.image
         mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
         mitten_feature_names = feature_prepare(mitten_feature)
-        # _single_feature_visualization(mitten_feature, mitten_feature_names)
+        _single_feature_visualization(mitten_feature, mitten_feature_names)
         mitten_pvalues = mitten_feature.pvalue_ttest_ind_calb2(mitten_feature_names)
-        for i, _single_feature_name in enumerate(mitten_pvalues.keys()):
-            print(f"{i}/{len(mitten_pvalues)}", _single_feature_name)
-        exit()
         plot_feature.plot_feature_distribution_calb2(
             mitten_feature, save_name=path.join(
                 "feature", mitten_feature.name, mitten_feature.ref_img.exp_id + "_features.png"),

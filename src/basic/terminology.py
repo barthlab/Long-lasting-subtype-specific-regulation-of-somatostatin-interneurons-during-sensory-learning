@@ -3,6 +3,10 @@ from dataclasses import dataclass
 from typing import Union, Dict, Tuple
 
 
+# random stuff
+DF_F0_STR = r"$\Delta F/F_0$"
+
+
 # event label
 class EventType(Enum):
     Puff = 1
@@ -152,3 +156,6 @@ CELLTYPE2STR = {
 }
 
 
+# common feature
+EVOKED_RESPONSE_FEATURE = "Evoked-Response"
+FOLD_CHANGE_ACC456_FEATURE = "Fold-Change from ACC456"

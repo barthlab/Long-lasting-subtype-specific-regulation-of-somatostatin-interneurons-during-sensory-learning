@@ -1,5 +1,7 @@
 from sklearn.mixture import GaussianMixture
 from sklearn.cluster import KMeans, SpectralClustering, DBSCAN
+from scipy.sparse.csgraph import laplacian
+from scipy.linalg import eigh
 import umap
 from sklearn.metrics import silhouette_score, calinski_harabasz_score
 

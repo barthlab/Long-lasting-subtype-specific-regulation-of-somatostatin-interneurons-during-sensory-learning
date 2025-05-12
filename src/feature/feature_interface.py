@@ -29,11 +29,22 @@ def general_feature_interface(
 
 
 # # Feature funcs
-special_compute_trial_evoked_peak: Callable[[CellSession], float] = lambda _single_cs: general_feature_interface(
-    instance_list=_single_cs.trials, insert_name="evoked_peak",
-    metric_func=element_feature_compute_trial_period_activity_peak,
-    func_criteria={"start_t": 0, "end_t": TEST_EVOKED_PERIOD,}, instance_criteria={"trial_type": EventType.Puff}
-)
+def basic_evoked_response_and_fold_change(feature_db: FeatureDataBase, baseline_days: str = "ACC456"):
+    feature_db.compute_DayWiseFeature(
+        EVOKED_RESPONSE_FEATURE,
+        func=lambda _single_cs: general_feature_interface(
+            instance_list=_single_cs.trials, insert_name=EVOKED_RESPONSE_FEATURE,
+            metric_func=element_feature_compute_trial_period_activity_peak,
+            func_criteria=OPTIONS_TIME_RANGE["trial evoked period"],
+            instance_criteria=OPTIONS_TRIAL_GROUP["stimulus trial only"]
+        ))
+
+    baseline = feature_db.get(EVOKED_RESPONSE_FEATURE, day_postfix=baseline_days)
+    fold_change_feature_name = f"Fold-Change from {baseline_days}"
+    feature_db.compute_DayWiseFeature(
+        fold_change_feature_name,
+        lambda single_cs: getattr(single_cs, EVOKED_RESPONSE_FEATURE) / baseline.get_cell(single_cs.cell_uid)
+    )
 
 
 def trial_wise_basic_features(feature_db: FeatureDataBase) -> List[str]:

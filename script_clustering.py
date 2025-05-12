@@ -47,7 +47,7 @@ if __name__ == "__main__":
         top25_vector = get_feature_vector(mitten_feature, top25_mitten_features,
                                           "ACC456", "Top25_ACC456")
         top25_vector.prepare_embedding()
-        # _grid_search_visualization(top25_vector, mitten_feature)
+        _grid_search_visualization(top25_vector, mitten_feature)
         _umap_visualization(top25_vector, mitten_feature)
 
         full_vector = get_feature_vector(mitten_feature, list(mitten_pvalues.keys()),

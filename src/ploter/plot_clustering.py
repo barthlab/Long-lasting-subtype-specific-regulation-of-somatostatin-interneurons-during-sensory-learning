@@ -184,7 +184,7 @@ def plot_embedding_n_neighbor_distribution(
         fig, axs = plt.subplots(top_k, len(PLOTTING_CLUSTERS_OPTIONS),)
         for col_id, cluster_num in enumerate(PLOTTING_CLUSTERS_OPTIONS):
             tmp_embed_list = sorted(general_filter(selected_embeddings, n_cluster=cluster_num),
-                                    key=lambda x: x.score, reverse=True)
+                                    key=lambda x: x.score, reverse=True)  # type: List[Embedding]
             for row_id, single_embed in enumerate(tmp_embed_list[:top_k]):
                 single_plot_embedding(axs[row_id, col_id], single_embed, cell_types,
                                       legend_flag=False, s=5)
@@ -195,7 +195,29 @@ def plot_embedding_n_neighbor_distribution(
                 axs[row_id, col_id].set_ylabel(f"UMAP-2")
                 axs[row_id, col_id].set_yticks([])
                 axs[row_id, col_id].set_title(f"score: {single_embed.score:.2f}")
-            average_score.append([single_embed.score for single_embed in tmp_embed_list])
+
+            if clustering_method == "DBSCAN":
+                average_score.append([single_embed.score for single_embed in tmp_embed_list])
+            elif clustering_method == "KMEANS":
+                tmp_list = []
+                for single_embed in tmp_embed_list:
+                    kmeans = KMeans(n_clusters=cluster_num,
+                                    random_state=single_embed.params["umap_random_state"])
+                    kmeans.fit(single_embed.embedding)
+                    tmp_list.append(kmeans.inertia_)
+                average_score.append(tmp_list)
+            elif clustering_method == "SPECTRAL":
+                tmp_list = []
+                for single_embed in tmp_embed_list:
+                    spectral = SpectralClustering(n_clusters=cluster_num,
+                                                  random_state=single_embed.params["umap_random_state"])
+                    spectral.fit(single_embed.embedding)
+                    affinity_matrix = spectral.affinity_matrix_
+                    L_norm, dd = laplacian(affinity_matrix, normed=True, return_diag=True)
+                    eigenvalues, eigenvectors = eigh(L_norm)
+                    tmp_list.append(eigenvalues[cluster_num])
+                average_score.append(tmp_list)
+
         fig.set_size_inches(5, 3)
         fig.tight_layout()
         quick_save(fig, save_name+clustering_method+"_top3_example.png")
@@ -212,10 +234,20 @@ def plot_embedding_n_neighbor_distribution(
             ax_s.scatter(x_jitter, group, alpha=0.3, s=3, color='black', linewidth=0.5)
 
         bar_dict = {1: average_score[1], **{i: average_score[i] for i in range(len(average_score))}}
-        paired_ttest_with_Bonferroni_correction_simple_version(ax_s, bar_dict)
-        ax_s.set_xlabel(f"Cluster number")
+        # paired_ttest_with_Bonferroni_correction_simple_version(ax_s, bar_dict)
         ax_s.set_xticks(bar_position, PLOTTING_CLUSTERS_OPTIONS)
-        ax_s.set_ylabel(f"Silhouette score")
+        if clustering_method == "DBSCAN":
+            ax_s.set_ylabel(f"Silhouette score")
+            ax_s.set_xlabel(f"Cluster number")
+        elif clustering_method == "KMEANS":
+            ax_s.set_ylabel(f"Inertia")
+            ax_s.set_xlabel(f"Cluster number")
+            ax_s.set_ylim(0, 510)
+            ax_s.plot(bar_position, bar_heights, lw=0.5, ls='--', color='gray', alpha=0.7)
+        elif clustering_method == "SPECTRAL":
+            ax_s.set_xlabel(f"Eigenvalue Index (Sorted)")
+            ax_s.set_ylabel(f"Eigenvalue Magnitude")
+            ax_s.plot(bar_position, bar_heights, lw=0.5, ls='--', color='gray', alpha=0.7)
         ax_s.yaxis.grid(True, linestyle='--', lw=0.5, color='grey', alpha=0.5)
         ax_s.spines[['right', 'top',]].set_visible(False)
         fig_s.set_size_inches(2.5, 2)

@@ -123,8 +123,8 @@ def _peak_complex_ai148(single_image: Image, feature_db: FeatureDataBase):
 
 
 if __name__ == "__main__":
-    # # # plot every fov
-    # for exp_id in EXP_LIST:
+    # # plot Calb2 PSE figure
+    # for exp_id in ("Calb2_PSE",):
     #     mitten = Experiment(exp_id=exp_id)
     #     mitten_data = mitten.image
     #     mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
@@ -132,13 +132,11 @@ if __name__ == "__main__":
     #     _every_fov(mitten, None if mitten_feature.Ai148_flag else mitten_feature)
     # exit()
 
-    # plot Calb2 figure
+    # plot Calb2 SAT figure
     for exp_id in ("Calb2_SAT",):
         mitten = Experiment(exp_id=exp_id)
         mitten_data = mitten.image
         mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
-        mitten_feature.compute_DayWiseFeature("responsiveness", compute_trial_responsive)
-        mitten_feature.compute_DayWiseFeature("evoked_peak", compute_trial_evoked_peak)
         # _heatmap_calb2(mitten_data, mitten_feature)
         _peak_complex_calb2(mitten_data, mitten_feature)
 
@@ -147,8 +145,6 @@ if __name__ == "__main__":
         mitten = Experiment(exp_id=exp_id)
         mitten_data = mitten.image
         mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
-        mitten_feature.compute_DayWiseFeature("responsiveness", compute_trial_responsive)
-        mitten_feature.compute_DayWiseFeature("evoked_peak", compute_trial_evoked_peak)
         # _heatmap_ai148(mitten_data, mitten_feature)
         _peak_complex_ai148(mitten_data, mitten_feature)
 

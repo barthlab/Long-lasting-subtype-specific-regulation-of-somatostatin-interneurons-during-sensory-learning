@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 from scipy.io import loadmat, savemat
 from typing import Optional, List, Iterable
@@ -5,6 +7,7 @@ from collections import defaultdict, Counter
 import numpy as np
 import scipy.signal as signal
 from scipy import stats
+import json
 
 from src.config import *
 
@@ -167,3 +170,17 @@ def calb2_pos_neg_count(cells_uid: List[CellUID], cell_type_dict: Dict[CellUID, 
     summary_string = f" +{n_pos} -{n_neg} {int(pos_ratio)}%"
     return n_pos, n_neg, pos_ratio, summary_string
 
+
+def json_dump(file_name: str, data_list: List[str]):
+    os.makedirs(path.dirname(file_name), exist_ok=True)
+    with open(file_name, 'w', encoding='utf-8') as f:
+        json.dump(data_list, f, indent=4)
+    print(f"Data successfully saved to {file_name}")
+
+
+def json_load(file_name: str) -> List[str]:
+    with open(file_name, 'r', encoding='utf-8') as f:
+        loaded_list = json.load(f)
+    print(f"Data successfully loaded from {file_name}:")
+    print(loaded_list)
+    return loaded_list
