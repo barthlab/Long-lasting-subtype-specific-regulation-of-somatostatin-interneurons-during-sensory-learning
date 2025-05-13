@@ -103,7 +103,7 @@ class Events:
         )
 
 
-def load_2p(mat_dict: dict) -> (np.ndarray, np.ndarray, np.ndarray):
+def load_2p(mat_dict: dict, session_total_frame_num: int) -> (np.ndarray, np.ndarray, np.ndarray):
     # Extract necessary data
     ops = mat_dict['ops'][0][0]
     F = mat_dict['F'].copy()
@@ -111,7 +111,7 @@ def load_2p(mat_dict: dict) -> (np.ndarray, np.ndarray, np.ndarray):
     num_neurites, total_frames = F.shape
 
     def corrupted_indices(axis_offset: np.ndarray) -> np.ndarray:
-        reshape_offset = np.array(axis_offset).reshape(-1, SESSION_FRAMES_2P)
+        reshape_offset = np.array(axis_offset).reshape(-1, session_total_frame_num)
         normalized_offset = reshape_offset - np.mean(reshape_offset, axis=-1, keepdims=True)
         return np.array(np.abs(normalized_offset.reshape(-1)) > FRAME_LOST_THRESHOLD)
 
@@ -367,6 +367,8 @@ class Image:
 
     def __post_init__(self):
         self.cells_uid, self.days, self.sessions_uid = [], [], []
+        if len(self.dataset) == 0:
+            raise ValueError("Trying to create an empty image.")
         for single_cellsession in self.dataset:
             self.cells_uid.append(single_cellsession.cell_uid)
             self.days.append(single_cellsession.day_id)
@@ -408,6 +410,14 @@ class Image:
     def select(self, **criteria) -> "Image":
         return Image(exp_id=self.exp_id, dataset=general_filter(self.dataset, **criteria))
 
+    @cached_property
+    def Ai148_flag(self) -> bool:
+        return Ai148_FLAG[self.exp_id]
+
+    @cached_property
+    def SAT_flag(self) -> bool:
+        return EXP2DAY[self.exp_id] is SatDay
+
 
 ###################
 # high level wrapper ##
@@ -425,16 +435,18 @@ class FOV:
     def __post_init__(self):
         assert self.exp_id in EXP_LIST
 
-        # check file existence
-        for file_name in ("Arduino.xlsx", f"Arduino P6_{self.fov_id}.xlsx", "Arduino time point.xlsx",
-                          f"Arduino time point P6_{self.fov_id}.xlsx", "Fall.mat"):
+        # # check file existence
+        # for file_name in ("Arduino.xlsx", f"Arduino P6_{self.fov_id}.xlsx", "Arduino time point.xlsx",
+        #                   f"Arduino time point P6_{self.fov_id}.xlsx", "Fall.mat"):
+        for file_name in ("Arduino.xlsx", "Arduino time point.xlsx", "Fall.mat"):
             if not path.exists(path.join(self.data_path, file_name)):
                 print(f"File {path.join(self.data_path, file_name)} not found!")
         if DEBUG_FLAG:
             print(f"Loading {self.exp_id} {self.mice_id} FOV{self.fov_id}")
 
         # data load
-        total_fluorescence, dropped_frames, cell_indices = load_2p(loadmat(path.join(self.data_path, "Fall.mat")))
+        total_fluorescence, dropped_frames, cell_indices = load_2p(
+            loadmat(path.join(self.data_path, "Fall.mat")), self.session_frames)
         self.num_cell, num_total_frames = total_fluorescence.shape
         puff_times = read_xlsx(path.join(self.data_path, "Arduino time point.xlsx"), header=0)
         puff_types = read_xlsx(path.join(self.data_path, "Arduino.xlsx"), header=None)
@@ -442,21 +454,30 @@ class FOV:
             f"Arduino.xlsx file doesn't match Arduino time point.xlsx in {self.mice_id} FOV{self.fov_id}"
 
         # data extraction prepare
-        num_raw_session = int(num_total_frames / SESSION_FRAMES_2P)
+        num_raw_session = int(num_total_frames / self.session_frames)
         self.num_session_per_day = 1 if num_raw_session <= 16 else 2
         days = EXP2DAY[self.exp_id]
         days_in_data, days_to_extract = list(days), list(days)
-        if self.mice_id in LOST_DATA:
-            if "corrupted" in LOST_DATA[self.mice_id]:
-                for day_id in LOST_DATA[self.mice_id]["corrupted"]:
-                    days_to_extract.remove(day_id)
-            if "lost" in LOST_DATA[self.mice_id]:
-                for day_id in LOST_DATA[self.mice_id]["lost"]:
-                    days_in_data.remove(day_id)
+
+        # days correction
+        if self.fov_uid in LOST_FOV:
+            for day_id in LOST_FOV[self.fov_uid]:
+                days_in_data.remove(day_id)
+        if self.exp_id in EXP_LOST_DAYS:
+            for day_id in EXP_LOST_DAYS[self.exp_id]:
+                days_in_data.remove(day_id)
+        if self.fov_uid in UNWANTED_FOV:
+            for day_id in UNWANTED_FOV[self.fov_uid]:
+                days_to_extract.remove(day_id)
+
         valid_days = sorted(list(set(days_in_data).intersection(set(days_to_extract))), key=lambda x: x.value)
-        assert total_fluorescence.shape[1] == SESSION_FRAMES_2P * len(days_in_data) * self.num_session_per_day, \
+        assert total_fluorescence.shape[1] == self.session_frames * len(days_in_data) * self.num_session_per_day, \
             (f"fluorescence shape doesn't match: "
-             f"{total_fluorescence.shape} != {SESSION_FRAMES_2P} x {len(days_in_data)} x {self.num_session_per_day}")
+             f"{total_fluorescence.shape}[1] != {self.session_frames} x {len(days_in_data)} x {self.num_session_per_day}")
+        assert len(puff_types.keys()) == len(puff_times.keys()) == len(days_in_data) * 2, \
+            (f"Mismatch data in Arduino.xlsx file Arduino time point.xlsx: found {len(days_in_data)} sessions in "
+             f"{self.mice_id} FOV{self.fov_id}, but Arduino.xlsx has {len(puff_types.keys())} sheets and "
+             f"Arduino time point.xlsx has {len(puff_times.keys())} sheets")
 
         # split cell session
         """
@@ -473,7 +494,7 @@ class FOV:
                     print(f"Parsing {self.exp_id} {self.mice_id} FOV{self.fov_id} "
                           f"Day{extract_day.value} #{session_order_in_day}")
                 num_session_before = self.num_session_per_day * day_order + session_order_in_day
-                session_start_frame = num_session_before * SESSION_FRAMES_2P
+                session_start_frame = num_session_before * self.session_frames
                 stim_data_index = 2 * day_order + session_order_in_day
 
                 # extract puff info
@@ -500,9 +521,9 @@ class FOV:
                 for cell_order, cell_index in enumerate(cell_indices):
                     # create fluorescence
                     new_fluorescence = TimeSeries(
-                        v=total_fluorescence[cell_order, session_start_frame: session_start_frame + SESSION_FRAMES_2P],
-                        t=np.linspace(0, SESSION_DURATION, SESSION_FRAMES_2P),
-                        drop=dropped_frames[session_start_frame: session_start_frame + SESSION_FRAMES_2P],
+                        v=total_fluorescence[cell_order, session_start_frame: session_start_frame + self.session_frames],
+                        t=np.linspace(0, SESSION_DURATION, self.session_frames),
+                        drop=dropped_frames[session_start_frame: session_start_frame + self.session_frames],
                         origin_t=0,
                     )
 
@@ -521,6 +542,10 @@ class FOV:
                             stims=new_stims
                         ))
 
+    @cached_property
+    def session_frames(self) -> int:
+        return SESSION_FRAME_NUMBER[self.exp_id]
+
     @property
     def image(self) -> Image:
         return Image(exp_id=self.exp_id, dataset=self.cell_sessions)
@@ -532,6 +557,10 @@ class FOV:
     @cached_property
     def str_uid(self) -> str:
         return f"{self.exp_id}_{self.mice_id}_FOV{self.fov_id}"
+
+    @cached_property
+    def fov_uid(self) -> FovUID:
+        return FovUID(exp_id=self.exp_id, mice_id=self.mice_id, fov_id=self.fov_id)
 
     @cached_property
     def mice_order(self) -> int:
@@ -554,6 +583,8 @@ class Mice:
         # Load fovs
         self.fovs, self.cell_sessions = [], []
         for fov_name in os.listdir(self.data_path):
+            if not path.isdir(path.join(self.data_path, fov_name)):
+                continue
             assert fov_name[:3] == "FOV"
             fov_id = int(fov_name[3:])
             new_fov = FOV(
@@ -596,6 +627,8 @@ class Experiment:
         # Load mice
         self.mice, self.cell_sessions = [], []
         for mice_name in os.listdir(self.data_path):
+            if not path.isdir(path.join(self.data_path, mice_name)):
+                continue
             assert mice_name[0] == "M" and mice_name[1:].isdigit()
             new_mice = Mice(
                 exp_id=self.exp_id,

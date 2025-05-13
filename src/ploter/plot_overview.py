@@ -37,7 +37,7 @@ def plot_heatmap_overview_cellwise(
         sort_col, sort_func = sorting
         if sort_col == "mice":
             cells_uid_order = sorted(single_image.cells_uid,
-                                     key=lambda x: (x.mice_id, sort_func(extracted_data["ACC6"][x])), reverse=True)
+                                     key=lambda x: (x.mice_id, x.fov_id, x.cell_id), reverse=True)
         else:
             assert sort_col in cols_names, f"Sorting name missing ({sort_col}) in {cols_names}"
             cells_uid_order = sorted(single_image.cells_uid, key=lambda x: sort_func(extracted_data[sort_col][x]),

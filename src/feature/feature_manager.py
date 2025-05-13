@@ -230,7 +230,7 @@ class FeatureDataBase:
 
     @cached_property
     def feature_file_path(self) -> str:
-        return path.join(FEATURE_EXTRACTED_PATH, f"{self.name}.xlsx")
+        return path.join(FEATURE_EXTRACTED_PATH, self.ref_img.exp_id, f"{self.name}.xlsx")
 
     def save_features(self):
         print(f"Saving features to {self.feature_file_path}...")

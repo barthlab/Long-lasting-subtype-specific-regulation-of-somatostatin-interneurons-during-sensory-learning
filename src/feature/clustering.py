@@ -140,7 +140,8 @@ class VectorSpace:
 
     @cached_property
     def grid_search_path(self) -> str:
-        return path.join(FEATURE_EXTRACTED_PATH, f"{self.ref_feature_db.name}_{self.name}_embeddings.xlsx")
+        return path.join(FEATURE_EXTRACTED_PATH, self.ref_feature_db.ref_img.exp_id,
+                         f"{self.ref_feature_db.name}_{self.name}_embeddings.xlsx")
 
     def archive_exists(self) -> bool:
         return path.exists(self.grid_search_path)

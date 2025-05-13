@@ -16,8 +16,8 @@ def previous_interp(x_new, xp, fp):
 
 def sync_timeseries(list_timeseries: List[TimeSeries], scale_factor: float = 2) \
         -> Tuple[TimeSeries, TimeSeries, Tuple[np.ndarray, np.ndarray]]:
-    list_times = [single_ts.t_aligned for single_ts in list_timeseries]
-    list_values = [single_ts.v for single_ts in list_timeseries]
+    list_times = [single_ts.t_aligned for single_ts in list_timeseries if single_ts is not None]
+    list_values = [single_ts.v for single_ts in list_timeseries if single_ts is not None]
     max_length = np.max([len(x) for x in list_times])
     min_time, max_time = np.max([x[0] for x in list_times]), np.min([x[-1] for x in list_times])
     xs = np.linspace(min_time, max_time, int(max_length * scale_factor))
@@ -26,7 +26,15 @@ def sync_timeseries(list_timeseries: List[TimeSeries], scale_factor: float = 2) 
     mean_value = TimeSeries(v=np.mean(interpolated_values, axis=0), t=xs, origin_t=0)
     sem_value = TimeSeries(v=np.std(interpolated_values, axis=0) / np.sqrt(len(xs)), t=xs, origin_t=0)
 
-    return mean_value, sem_value, (xs, interpolated_values)
+    # deal with None value
+    final_interpolated_values = np.full((len(list_timeseries), len(xs)), np.nan)
+    tmp_cnt = 0
+    for list_ts_id, single_ts in enumerate(list_timeseries):
+        if single_ts is not None:
+            final_interpolated_values[list_ts_id] = interpolated_values[tmp_cnt]
+            tmp_cnt += 1
+
+    return mean_value, sem_value, (xs, final_interpolated_values)
 
 
 def by_cell2by_mice(dict_by_cell: Dict[CellUID, Any]) -> Dict[MiceUID, Any]:
@@ -49,7 +57,10 @@ def by_cell2by_mice(dict_by_cell: Dict[CellUID, Any]) -> Dict[MiceUID, Any]:
 
 
 def brightness(ts: TimeSeries) -> float:
-    return np.mean(ts.segment(start_t=0, end_t=1., relative_flag=True).v)
+    if ts is None:
+        return 0
+    else:
+        return np.mean(ts.segment(start_t=0, end_t=1., relative_flag=True).v)
 
 
 def extract_avg_df_f0(single_image: Image, days_dict: Dict[str, Tuple[DayType, ...]], **trials_criteria) \
@@ -59,10 +70,14 @@ def extract_avg_df_f0(single_image: Image, days_dict: Dict[str, Tuple[DayType, .
         sub_image = single_image.select(day_id=group_of_days)
         sub_image_cell_split = sub_image.split("cell_uid")
         for cell_uid in single_image.cells_uid:
+            if cell_uid not in sub_image_cell_split:
+                extracted_data[group_name][cell_uid] = None
+                continue
             all_trials = chain.from_iterable([single_cs.trials for single_cs in sub_image_cell_split[cell_uid].dataset])
             selected_trials = general_filter(all_trials, **trials_criteria)
             if len(selected_trials) == 0:
-                raise ZeroDivisionError(f"Found zero available trials in {group_name} {cell_uid}")
+                extracted_data[group_name][cell_uid] = None
+                continue
             avg_df_f0, *_ = sync_timeseries([single_trial.df_f0 for single_trial in selected_trials])
             extracted_data[group_name][cell_uid] = avg_df_f0
     return extracted_data

@@ -27,14 +27,14 @@ def plot_cell_session(single_cs: CellSession, save_name: str):
         ls = '--' if single_trial.drop_flag else "-"
         axs[1].plot(single_trial.df_f0.t_aligned, single_trial.df_f0.v + trial_id * DY_DF_F0,
                     color=EVENT2COLOR[single_trial.trial_type], alpha=0.7, lw=1, ls=ls)
-        axs[1].add_patch(ptchs.Rectangle(
+        axs[1].add_patch(mpatches.Rectangle(
             (0, (trial_id - 0.4) * DY_DF_F0), AP_DURATION, 0.8*DY_DF_F0,
             facecolor=EVENT2COLOR[single_trial.trial_type], alpha=0.3, edgecolor='none', ))
 
     for block_order, single_block in enumerate(single_cs.spont_blocks):
         axs[2].plot(single_block.df_f0.t_aligned, single_block.df_f0.v + (block_order-0.5) * DY_DF_F0,
                     color=EVENT2COLOR[single_block.block_type], alpha=0.7, lw=1)
-        axs[0].add_patch(ptchs.Rectangle(
+        axs[0].add_patch(mpatches.Rectangle(
             (single_block.block_start, -1.5 * DY_DF_F0), single_block.block_len, DY_DF_F0,
             facecolor=EVENT2COLOR[single_block.block_type], alpha=0.3, edgecolor='none', ))
     axs[2].sharey(axs[1])
@@ -93,7 +93,7 @@ def plot_image(single_image: Image, save_name: str, title: str = None,
                     if hasattr(single_trial, "responsiveness"):
                         baseline_period = single_trial.df_f0.segment(*TRIAL_BASELINE_RANGE, relative_flag=True)
                         if single_trial.responsiveness:
-                            tmp_ax.add_patch(ptchs.Rectangle(
+                            tmp_ax.add_patch(mpatches.Rectangle(
                                 (TRIAL_BASELINE_RANGE[0], - trial_id * DY_DF_F0 - session_dy),
                                 TRIAL_BASELINE_RANGE[1]-TRIAL_BASELINE_RANGE[0], TEST_STD_RATIO*single_cs.noise_level,
                                 facecolor=OTHER_COLORS["annotate"], alpha=0.3, edgecolor='none', ))

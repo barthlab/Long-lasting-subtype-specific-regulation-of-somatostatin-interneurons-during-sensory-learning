@@ -3,11 +3,12 @@ import os
 import os.path as path
 
 from src.basic.terminology import *
+from src.data_status import *
 
 
 # average policy
 REPLACE_BAD_VALUE_FLAG = False
-DEBUG_FLAG = False
+DEBUG_FLAG = True
 FIGURE_SHOW_FLAG = 0
 
 
@@ -19,36 +20,23 @@ BEHAVIOR_DATA_PATH = "data/Behavior"
 FEATURE_DATA_PATH = "data/Feature"
 FEATURE_EXTRACTED_PATH = "data/Extracted Feature"
 FIGURE_PATH = "figures"
-
-# data lost
-LOST_DATA = {
-    "M087": {"corrupted": [SatDay.SAT9, SatDay.SAT10]},
-    "M088": {"lost": [SatDay.SAT7, ]},
-    "M017": {"lost": [SatDay.ACC1, ]},
-}
-# session corruption
-LOST_SESSION = {
-    SessionUID(exp_id="Calb2_SAT", mice_id="M085", fov_id=4, day_id=SatDay.SAT1, session_in_day=0): 15,
-    SessionUID(exp_id="Calb2_SAT", mice_id="M099", fov_id=4, day_id=SatDay.SAT3, session_in_day=0): 19,
-    SessionUID(exp_id="Ai148_PSE", mice_id="M037", fov_id=2, day_id=PseDay.ACC3, session_in_day=0): 19,
-    SessionUID(exp_id="Ai148_PSE", mice_id="M037", fov_id=2, day_id=PseDay.ACC3, session_in_day=1): 19,
-    SessionUID(exp_id="Ai148_PSE", mice_id="M046", fov_id=2, day_id=PseDay.ACC2, session_in_day=0): 19,
-    SessionUID(exp_id="Ai148_PSE", mice_id="M046", fov_id=2, day_id=PseDay.ACC2, session_in_day=1): 19,
-    SessionUID(exp_id="Ai148_SAT", mice_id="M023", fov_id=1, day_id=SatDay.SAT9, session_in_day=0): 19,
-}
+SELECTED_CLUSTERING_FEATURE_JSON_PATH = path.join(
+    FEATURE_EXTRACTED_PATH, "Calb2_SAT", "mitten_feature_Top25_ACC456_features.json")
 
 
 # experiment related
-EXP_LIST = ("Ai148_SAT", "Ai148_PSE", "Calb2_SAT")
+EXP_LIST = ("Ai148_SAT", "Ai148_PSE", "Calb2_SAT", "Calb2_PSE")
 EXP2DAY = {
     "Ai148_PSE": PseDay,
     "Ai148_SAT": SatDay,
     "Calb2_SAT": SatDay,
+    "Calb2_PSE": PseDay,
 }
 Ai148_FLAG = {
     "Ai148_PSE": True,
     "Ai148_SAT": True,
     "Calb2_SAT": False,
+    "Calb2_PSE": False,
 }
 BASELINE_DAYS = "ACC456"
 
@@ -69,12 +57,19 @@ DT = 1/FS_2P  # s
 HDT = DT/2  # s
 GLOBAL_BASELINE_PERCENTILE = 20  # %
 GLOBAL_BASELINE_WINDOW = int(FS_2P*60)  # frames
-SESSION_FRAMES_2P = 3061
+SESSION_FRAME_NUMER_2P_MO = 3061
+SESSION_FRAME_NUMER_2P_MATT = 3065
 SESSION_DURATION = 60 * 10  # s
 FRAME_LOST_THRESHOLD = 20  # pixel
 FRAME_INTERPOLATE_THRESHOLD = 2  # frame
 TIMEPOINTS_MS2S_FLAG = True
 AP_DURATION = 0.5  # s
+SESSION_FRAME_NUMBER = {
+    "Ai148_PSE": SESSION_FRAME_NUMER_2P_MO,
+    "Ai148_SAT": SESSION_FRAME_NUMER_2P_MO,
+    "Calb2_SAT": SESSION_FRAME_NUMER_2P_MO,
+    "Calb2_PSE": SESSION_FRAME_NUMER_2P_MATT,
+}
 
 # Split parameter
 TRIAL_RANGE = (-2, 4)  # s
@@ -88,6 +83,8 @@ TEST_EVOKED_PERIOD = 2  # s
 TEST_STD_RATIO = 5  # 5 std pretty good
 RESPONSE_THRESHOLD = 0.01  # p
 
-
+# common feature
+EVOKED_RESPONSE_FEATURE = "Evoked-Response"
+FOLD_CHANGE_ACC456_FEATURE = "Fold-Change from ACC456"
 
 

@@ -35,6 +35,12 @@ def _umap_visualization(single_vector: VectorSpace, feature_db: FeatureDataBase)
     plot_clustering.plot_umap_hyperparams_distribution(single_vector, _tmp_save_name)
 
 
+def _save_feature_order(vec_space: VectorSpace, feature_names: List[str]):
+    save_path = path.join(FEATURE_EXTRACTED_PATH, vec_space.ref_feature_db.ref_img.exp_id,
+                          f"{vec_space.ref_feature_db.name}_{vec_space.name}_features.json")
+    json_dump(save_path, feature_names)
+
+
 if __name__ == "__main__":
     for exp_id in ("Calb2_SAT",):
         mitten = Experiment(exp_id=exp_id)
@@ -42,17 +48,23 @@ if __name__ == "__main__":
         mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
         mitten_feature_names = feature_prepare(mitten_feature)
         mitten_pvalues = mitten_feature.pvalue_ttest_ind_calb2(mitten_feature_names)
+
+        # top 25
         top25_mitten_features = list(mitten_pvalues.keys())[:25]
         print(top25_mitten_features)
         top25_vector = get_feature_vector(mitten_feature, top25_mitten_features,
                                           "ACC456", "Top25_ACC456")
         top25_vector.prepare_embedding()
+        # _save_feature_order(top25_vector, top25_mitten_features)
         _grid_search_visualization(top25_vector, mitten_feature)
         _umap_visualization(top25_vector, mitten_feature)
 
+        # full
         full_vector = get_feature_vector(mitten_feature, list(mitten_pvalues.keys()),
                                          "ACC456", "Full_ACC456")
         full_vector.prepare_embedding()
+
+        # waveform
         waveform_vector = get_waveform_vector(mitten_feature, "ACC456", "waveform_ACC456")
         waveform_vector.prepare_embedding()
         _distance_distribution_visualization([top25_vector, full_vector, waveform_vector], mitten_feature)

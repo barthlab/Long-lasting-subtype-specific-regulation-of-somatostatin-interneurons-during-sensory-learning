@@ -131,6 +131,13 @@ class MiceUID:
 
 
 @dataclass(frozen=True, order=True)
+class FovUID:
+    exp_id: str
+    mice_id: str
+    fov_id: int
+
+
+@dataclass(frozen=True, order=True)
 class SessionUID:
     exp_id: str
     mice_id: str
@@ -147,6 +154,7 @@ class CellType(Enum):
     Put_Calb2_Pos = 3
 
 
+# Cell type
 CELLTYPE2STR = {
     CellType.Unknown: "Unk.",
     CellType.Calb2_Neg: "SST-O",
@@ -154,8 +162,3 @@ CELLTYPE2STR = {
     CellType.Put_Calb2_Neg: "putative SST-O",
     CellType.Put_Calb2_Pos: "putative SST-Calb2",
 }
-
-
-# common feature
-EVOKED_RESPONSE_FEATURE = "Evoked-Response"
-FOLD_CHANGE_ACC456_FEATURE = "Fold-Change from ACC456"
