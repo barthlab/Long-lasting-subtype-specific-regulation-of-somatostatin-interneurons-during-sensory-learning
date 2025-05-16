@@ -1,20 +1,16 @@
 from src import *
 
 
-def _every_fov(single_exp: Experiment, additional_info: FeatureDataBase):
+def _every_fov(single_exp: Experiment, feature_db: FeatureDataBase):
     for single_mice in single_exp.mice:
         for single_fov in single_mice.fovs:
-            visualize.plot_image(
-                Image(single_exp.exp_id, single_fov.cell_sessions),
-                path.join(single_exp.exp_id, f"{single_fov.str_uid}.png"),
-                additional_info=additional_info
-            )
+            visualize.plot_image(Image(single_exp.exp_id, single_fov.cell_sessions), feature_db,
+                                 path.join(single_exp.exp_id, f"{single_fov.str_uid}.png"),)
 
 
 def _heatmap_calb2sat(single_image: Image, feature_db: FeatureDataBase):
     trials_config = {
         "stimulus_trial": {"trial_type": EventType.Puff},
-        # "responsive_stimulus_trial_2std": {"trial_type": EventType.Puff, "responsiveness": 1},
     }
     col_config = {
         "sortbymice": (["ACC4", "ACC5", "ACC6", f"SAT1", f"SAT5", f"SAT8"], "mice"),
@@ -23,21 +19,22 @@ def _heatmap_calb2sat(single_image: Image, feature_db: FeatureDataBase):
     }
     for trials_name, trials_criteria in trials_config.items():
         for col_name, (col_criteria, sort_day) in col_config.items():
-            save_name = f"{single_image.exp_id}_{trials_name}_{col_name}"
+            save_path = path.join("replot", f"{single_image.exp_id}",
+                                  f"{single_image.exp_id}_{trials_name}_{col_name}")
             days_dict = {col_name: ADV_SAT[col_name] for col_name in col_criteria}
-            print(save_name)
+            print(save_path)
             plot_overview.plot_heatmap_overview_cellwise(
-                single_image.select(Calb2=1), feature_db, save_name=path.join("replot", f"{single_image.exp_id}_heatmap", f"{save_name}_Calb2_pos.png"),
+                single_image.select(Calb2=1), feature_db, save_name=save_path + f"_Calb2_pos.png",
                 days_dict=days_dict, trials_criteria=trials_criteria,
                 sorting=(sort_day, brightness), theme_color=CELLTYPE2COLOR[CellType.Calb2_Pos]
             )
             plot_overview.plot_heatmap_overview_cellwise(
-                single_image.select(Calb2=0), feature_db, save_name=path.join("replot", f"{single_image.exp_id}_heatmap", f"{save_name}_Calb2_neg.png"),
+                single_image.select(Calb2=0), feature_db, save_name=save_path + f"_Calb2_neg.png",
                 days_dict=days_dict, trials_criteria=trials_criteria,
                 sorting=(sort_day, brightness), theme_color=CELLTYPE2COLOR[CellType.Calb2_Neg]
             )
             plot_overview.plot_heatmap_overview_cellwise(
-                single_image, feature_db, save_name=path.join("replot", f"{single_image.exp_id}_heatmap", f"{save_name}_all_cell.png"),
+                single_image, feature_db, save_name=save_path + "_all_cell.png",
                 days_dict=days_dict, trials_criteria=trials_criteria,
                 sorting=(sort_day, brightness), theme_color='black'
             )
@@ -78,7 +75,6 @@ def _heatmap_ai148(single_image: Image, feature_db: FeatureDataBase):
     _exp = "SAT" if feature_db.SAT_flag else "PSE"
     trials_config = {
         "stimulus_trial": {"trial_type": EventType.Puff},
-        # "responsive_stimulus_trial_2std": {"trial_type": EventType.Puff, "responsiveness": 1},
     }
     col_config = {
         "sortbymice": (["ACC4", "ACC5", "ACC6", f"{_exp}1", f"{_exp}5", f"{_exp}8"], "mice"),
@@ -93,18 +89,15 @@ def _heatmap_ai148(single_image: Image, feature_db: FeatureDataBase):
             else:
                 days_dict = {col_name: ADV_PSE[col_name] for col_name in col_criteria}
             plot_overview.plot_heatmap_overview_cellwise(
-                single_image, feature_db, save_name=path.join("replot", f"{single_image.exp_id}_heatmap", f"{save_name}_all_cell.png"),
+                single_image, feature_db, save_name=path.join("replot", f"{single_image.exp_id}",
+                                                              f"{save_name}_all_cell.png"),
                 days_dict=days_dict, trials_criteria=trials_criteria,
                 sorting=(sort_day, brightness), theme_color='black'
             )
 
 
 def _peak_complex_calb2sat(single_image: Image, feature_db: FeatureDataBase):
-    def compute_normalized_peak(single_cs: CellSession):
-        baseline = feature_db.get("evoked_peak", BASELINE_DAYS).get_cell(single_cs.cell_uid)
-        return getattr(single_cs, "evoked_peak")/baseline
-
-    feature_db.compute_DayWiseFeature("evoked_peak_normalized", compute_normalized_peak)
+    basic_evoked_response_and_fold_change(feature_db)
 
     bar_configs = {
         "single_day": (["ACC456", "SAT1", "SAT5", "SAT8"], "SAT5"),
@@ -112,10 +105,12 @@ def _peak_complex_calb2sat(single_image: Image, feature_db: FeatureDataBase):
     }
     for bar_name, (bar_config, trace_end) in bar_configs.items():
         for by_mouse_flag in (True, False):
-            save_name = path.join("replot", f"{single_image.exp_id}_peak_complex", f"{single_image.exp_id}_{bar_name}_{trace_end}_bymouse{by_mouse_flag}.png")
+            by_which_post_fix = "by_mouse" if by_mouse_flag else "by_cell"
+            save_name = path.join("replot", f"{single_image.exp_id}",
+                                  f"{single_image.exp_id}_{bar_name}_{trace_end}_{by_which_post_fix}.png")
             plot_overview.plot_peak_complex(
                 select_criteria_list=[{"Calb2": 0}, {"Calb2": 1}], feature_db=feature_db,
-                bar_feature_name="evoked_peak", curve_feature_name="evoked_peak_normalized",
+                bar_feature_name=EVOKED_RESPONSE_FEATURE, curve_feature_name=FOLD_CHANGE_ACC456_FEATURE,
                 save_name=save_name, days_ref=ADV_SAT,
                 bar_days=bar_config,
                 trace_days=["ACC456", trace_end,],
@@ -126,22 +121,18 @@ def _peak_complex_calb2sat(single_image: Image, feature_db: FeatureDataBase):
 
 
 def _peak_complex_ai148(single_image: Image, feature_db: FeatureDataBase):
-
     basic_evoked_response_and_fold_change(feature_db)
 
     _exp = "SAT" if feature_db.SAT_flag else "PSE"
-    # bar_configs = {
-    #     "single_day": (["ACC456", f"{_exp}1", f"{_exp}5", f"{_exp}8"], f"{_exp}5"),
-    #     "multiple_day": (["ACC456", f"{_exp}123", f"{_exp}456", f"{_exp}789"], f"{_exp}456"),
-    # }
     bar_configs = {
-        "single_day": (["ACC456", f"{_exp}1", f"{_exp}2", f"{_exp}3", f"{_exp}4", f"{_exp}5",], f"{_exp}5"),
-        "multiple_day": (["ACC456", f"{_exp}12", f"{_exp}45", ], f"{_exp}45"),
+        "single_day": (["ACC456", f"{_exp}1", f"{_exp}5", f"{_exp}8"], f"{_exp}5"),
+        "multiple_day": (["ACC456", f"{_exp}123", f"{_exp}456", f"{_exp}789"], f"{_exp}456"),
     }
-
     for bar_name, (bar_config, trace_end) in bar_configs.items():
         for by_mouse_flag in (True, False):
-            save_name = path.join("replot", f"{single_image.exp_id}_peak_complex", f"{single_image.exp_id}_{bar_name}_{trace_end}_bymouse{by_mouse_flag}.png")
+            by_which_post_fix = "by_mouse" if by_mouse_flag else "by_cell"
+            save_name = path.join("replot", f"{single_image.exp_id}",
+                                  f"{single_image.exp_id}_{bar_name}_{trace_end}_{by_which_post_fix}.png")
             plot_overview.plot_peak_complex(
                 select_criteria_list=[{}], feature_db=feature_db,
                 bar_feature_name=EVOKED_RESPONSE_FEATURE, curve_feature_name=FOLD_CHANGE_ACC456_FEATURE,
@@ -155,27 +146,26 @@ def _peak_complex_ai148(single_image: Image, feature_db: FeatureDataBase):
 
 
 if __name__ == "__main__":
-    top25_feature_names = json_load(SELECTED_CLUSTERING_FEATURE_JSON_PATH)
-
-    # plot Calb2 PSE figure
-    for exp_id in ("Calb2_PSE",):
-        mitten = Experiment(exp_id=exp_id)
-        mitten_data = mitten.image
-        mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
-        # _every_fov(mitten, None if mitten_feature.Ai148_flag else mitten_feature)
-        # _every_fov(mitten, None)
-        _heatmap_calb2pse(mitten_data, mitten_feature)
-        _peak_complex_ai148(mitten_data, mitten_feature)
-
-        # mitten_feature_names = feature_prepare(mitten_feature)
-    exit()
+    # # plot Calb2 PSE figure
+    # for exp_id in ("Calb2_PSE",):
+    #     mitten = Experiment(exp_id=exp_id)
+    #     mitten_data = mitten.image
+    #     mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
+    #     # _every_fov(mitten, None if mitten_feature.Ai148_flag else mitten_feature)
+    #     # _every_fov(mitten, None)
+    #     _heatmap_calb2pse(mitten_data, mitten_feature)
+    #     _peak_complex_ai148(mitten_data, mitten_feature)
+    #
+    #     # mitten_feature_names = feature_prepare(mitten_feature)
+    # exit()
 
     # plot Calb2 SAT figure
     for exp_id in ("Calb2_SAT",):
         mitten = Experiment(exp_id=exp_id)
         mitten_data = mitten.image
         mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
-        # _heatmap_calb2sat(mitten_data, mitten_feature)
+        _every_fov(mitten, mitten_feature)
+        _heatmap_calb2sat(mitten_data, mitten_feature)
         _peak_complex_calb2sat(mitten_data, mitten_feature)
 
     # # plot Ai148 figure
@@ -183,6 +173,7 @@ if __name__ == "__main__":
         mitten = Experiment(exp_id=exp_id)
         mitten_data = mitten.image
         mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
-        # _heatmap_ai148(mitten_data, mitten_feature)
+        _every_fov(mitten, mitten_feature)
+        _heatmap_ai148(mitten_data, mitten_feature)
         _peak_complex_ai148(mitten_data, mitten_feature)
 

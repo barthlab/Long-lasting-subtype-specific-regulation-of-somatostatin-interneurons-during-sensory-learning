@@ -66,26 +66,35 @@ def plot_single_feature_Calb2(
 
 def plot_feature_distribution_calb2(
         feature_db: FeatureDataBase, save_name: str, sorted_p_value_dict: Dict[str, float], top_k: int = 25,
+        period_name_flag: bool = False
 ):
     assert not feature_db.Ai148_flag
     sorted_features_names = list(sorted_p_value_dict.keys())
     print(sorted_features_names)
     sorted_features_pvalues = list(sorted_p_value_dict.values())
-    sorted_features_labels = [feature_name_to_label(single_feature_name)
-                              for single_feature_name in sorted_features_names]
     n_feature = len(sorted_features_pvalues)
-    sorted_features_colors = [FEATURE_LABEL2COLOR[single_label]
-                              for single_label in sorted_features_labels]
+
+    if period_name_flag:
+        sorted_features_labels = [feature_name_to_period_name(single_feature_name)
+                                  for single_feature_name in sorted_features_names]
+        sorted_features_colors = [PERIOD_NAME2COLOR[single_label]
+                                  for single_label in sorted_features_labels]
+    else:
+        sorted_features_labels = [feature_name_to_label(single_feature_name)
+                                  for single_feature_name in sorted_features_names]
+        sorted_features_colors = [FEATURE_LABEL2COLOR[single_label]
+                                  for single_label in sorted_features_labels]
 
     fig, ax = plt.subplots(1, 1)
     bars = ax.bar(range(n_feature), sorted_features_pvalues,
                   color=sorted_features_colors, log=True)
     legend_handles = []
-    for label_name, label_color in FEATURE_LABEL2COLOR.items():
+    for label_name, label_color in PERIOD_NAME2COLOR.items() if period_name_flag else FEATURE_LABEL2COLOR.items():
         patch = mpatches.Patch(color=label_color, label=label_name)
         legend_handles.append(patch)
 
-    ax.legend(handles=legend_handles, title="Features", frameon=False, fontsize=4, title_fontsize=4)
+    ax.legend(handles=legend_handles, title="Periods" if period_name_flag else "Features",
+              frameon=False, fontsize=4, title_fontsize=4)
     ax.set_axisbelow(True)
     ax.yaxis.grid(color='gray')
     ax.set_xticks([])

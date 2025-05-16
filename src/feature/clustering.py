@@ -3,7 +3,7 @@ from typing import List, Callable, Optional, Dict, Union, Tuple
 from dataclasses import dataclass, field, MISSING
 from sklearn.cluster import KMeans, SpectralClustering, DBSCAN
 from sklearn.mixture import GaussianMixture
-from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
+from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score, adjusted_rand_score
 import umap
 import os
 import os.path as path
@@ -18,14 +18,65 @@ from src.feature.clustering_params import *
 from src.basic.data_operator import *
 
 
+@dataclass(frozen=True)
+class Labelling:
+    cells_uid: Tuple[CellUID]
+    labels: Tuple[int]
+
+    def __post_init__(self):
+        assert len(self.cells_uid) == len(self.labels)
+        assert len(self.cells_uid) > 0
+
+    @cached_property
+    def sorted_mapping(self) -> Dict[CellUID, int]:
+        return {k: v for k, v in sorted(zip(self.cells_uid, self.labels), key=lambda x: x[0])}
+
+    @cached_property
+    def _cached_hash(self) -> int:
+        canonical_map: Dict[int, int] = {}
+        next_canonical_label = 0
+        canonical_labels_result = []
+        for single_label in self.sorted_mapping.values():
+            if single_label not in canonical_map:
+                canonical_map[single_label] = next_canonical_label
+                next_canonical_label += 1
+            canonical_labels_result.append(canonical_map[single_label])
+        return hash(tuple(canonical_labels_result))
+
+    def __hash__(self) -> int:
+        return self._cached_hash
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Labelling):
+            return NotImplemented
+
+        if len(self.labels) != len(other.labels):
+            return False
+        if self._cached_hash != other._cached_hash:
+            return False
+
+        self_aligned_labels = tuple(self.sorted_mapping.values())
+        other_aligned_labels = tuple(other.sorted_mapping.values())
+        try:
+            ari = adjusted_rand_score(self_aligned_labels, other_aligned_labels)
+        except ValueError:
+            raise ValueError(f"Fail to compute ARI for {self_aligned_labels} and {other_aligned_labels}")
+        return abs(ari - 1.0) < 1e-9
+
+    @cached_property
+    def n_cluster(self) -> int:
+        unique_labels = np.unique(self.labels)
+        return len(unique_labels) - (1 if -1 in unique_labels else 0)
+
+
 @dataclass
 class Embedding:
     name: str
 
     n_dim: int
-    cells_uid: List[CellUID]
-    embedding: np.ndarray
-    labels: np.ndarray
+    cells_uid: List[CellUID] = field(repr=False)
+    embedding: np.ndarray = field(repr=False)
+    labels: np.ndarray = field(repr=False)
     params: dict
     score: float
 
@@ -46,6 +97,9 @@ class Embedding:
     @cached_property
     def label_by_cell(self) -> Dict[CellUID, float]:
         return {cell_uid: float(self.labels[cell_cnt]) for cell_cnt, cell_uid in enumerate(self.cells_uid)}
+
+    def to_labelling(self) -> Labelling:
+        return Labelling(tuple(self.cells_uid), tuple(self.labels))
 
 
 def clustering_search(embedding: np.ndarray):
@@ -143,6 +197,11 @@ class VectorSpace:
         return path.join(FEATURE_EXTRACTED_PATH, self.ref_feature_db.ref_img.exp_id,
                          f"{self.ref_feature_db.name}_{self.name}_embeddings.xlsx")
 
+    @cached_property
+    def representative_embeddings_path(self) -> str:
+        return path.join(BEST_CLUSTERING_PATH, self.ref_feature_db.ref_img.exp_id,
+                         f"{self.ref_feature_db.name}_{self.name}_best_embeddings_by_n_cluster.xlsx")
+
     def archive_exists(self) -> bool:
         return path.exists(self.grid_search_path)
 
@@ -184,76 +243,83 @@ class VectorSpace:
                         self._embeddings.append(new_embedding)
         self._embeddings = sorted(self._embeddings, key=lambda x: x.score, reverse=True)
 
+    def save_single_embedding(self, single_embed: Embedding, writer, new_sheet_name: str = None):
+        padding_empty_list = ["", ]*(len(self.cells_uid)-1)
+        prefix_dict = {
+            "name": [single_embed.name, ] + padding_empty_list,
+            "n_dim": [single_embed.n_dim, ] + padding_empty_list,
+            "score": [single_embed.score, ] + padding_empty_list,
+        }
+        params_dict = {
+            param_key: [param_value, ] + padding_empty_list for param_key, param_value in
+            single_embed.params.items()
+        }
+        embedding_dict = {
+            f"embedding-{i}": single_embed.embedding[:, i]
+            for i in range(single_embed.n_dim)
+        }
+        label_dict = {
+            f"labels": single_embed.labels
+        }
+        df = pd.DataFrame({**prefix_dict, **params_dict,
+                           **decompose_cell_uid_list(single_embed.cells_uid),
+                           **embedding_dict, **label_dict})
+        df.to_excel(writer, sheet_name=single_embed.name if new_sheet_name is None else new_sheet_name,
+                    index=False)
+
     def _save_embeddings(self):
         assert len(self._embeddings) > 0
         print(f"Saving {len(self._embeddings)} embeddings into {self.grid_search_path}")
         os.makedirs(path.dirname(self.grid_search_path), exist_ok=True)
-        padding_empty_list = ["", ]*(len(self.cells_uid)-1)
         with pd.ExcelWriter(self.grid_search_path, engine='xlsxwriter') as writer:
             for single_embedding in self._embeddings:
-                prefix_dict = {
-                    "name": [single_embedding.name, ] + padding_empty_list,
-                    "n_dim": [single_embedding.n_dim, ] + padding_empty_list,
-                    "score": [single_embedding.score, ] + padding_empty_list,
-                }
-                params_dict = {
-                    param_key: [param_value, ] + padding_empty_list for param_key, param_value in
-                    single_embedding.params.items()
-                }
-                embedding_dict = {
-                    f"embedding-{i}": single_embedding.embedding[:, i]
-                    for i in range(single_embedding.n_dim)
-                }
-                label_dict = {
-                    f"labels": single_embedding.labels
-                }
-                df = pd.DataFrame({**prefix_dict, **params_dict,
-                                   **decompose_cell_uid_list(single_embedding.cells_uid),
-                                   **embedding_dict, **label_dict})
-                df.to_excel(writer, sheet_name=single_embedding.name, index=False)
+                self.save_single_embedding(single_embedding, writer)
         print(f"Embedding sheets saved at: {self.grid_search_path}.")
+
+    def load_single_embedding(self, xls, sheet_name: str):
+        df = pd.read_excel(xls, sheet_name=sheet_name)
+        if df.empty:
+            raise ValueError
+        embedding_name = df["name"][0]
+        tmp_n_dim = int(df["n_dim"][0])
+        tmp_score = df["score"][0]
+        tmp_params_dict = {
+            'umap_n_neighbors': int(df["umap_n_neighbors"][0]),
+            'umap_min_dist': df["umap_min_dist"][0],
+            'umap_random_state': int(df["umap_random_state"][0]),
+            'clustering': df["clustering"][0],
+            'scoring func': df["scoring func"][0],
+        }
+        for col_name, col_value in df.items():
+            if "cluster-kw: " in col_name:
+                tmp_params_dict[col_name] = col_value[0]
+        # check cell uid
+        tmp_cells_uid = synthesize_cell_uid_list({_k: df[_k].tolist()
+                                                  for _k in ("exp_id", "mice_id", "fov_id", "cell_id")})
+        assert tmp_cells_uid == self.cells_uid, \
+            f"Different cells_uid\nStored File: {tmp_cells_uid}\nCurrent Feature Database: {self.cells_uid}"
+
+        tmp_embedding = np.stack([df[f"embedding-{i}"] for i in range(tmp_n_dim)], axis=1)
+        new_embedding = Embedding(
+            name=embedding_name,
+            n_dim=tmp_n_dim,
+            cells_uid=tmp_cells_uid,
+            embedding=tmp_embedding,
+            labels=df["labels"],
+            params=tmp_params_dict,
+            score=tmp_score
+        )
+        return new_embedding
 
     def _load_exist_embeddings(self):
         print(f"Loading embeddings from {self.grid_search_path}...")
         xls = pd.ExcelFile(self.grid_search_path, engine='openpyxl')
         self._embeddings = []
         for sheet_id, sheet_name in enumerate(xls.sheet_names):
-            df = pd.read_excel(xls, sheet_name=sheet_name)
-            if df.empty:
-                raise ValueError
-            embedding_name = df["name"][0]
-            tmp_n_dim = int(df["n_dim"][0])
-            tmp_score = df["score"][0]
-            tmp_params_dict = {
-                'umap_n_neighbors': int(df["umap_n_neighbors"][0]),
-                'umap_min_dist': df["umap_min_dist"][0],
-                'umap_random_state': int(df["umap_random_state"][0]),
-                'clustering': df["clustering"][0],
-                'scoring func': df["scoring func"][0],
-            }
-            for col_name, col_value in df.items():
-                if "cluster-kw: " in col_name:
-                    tmp_params_dict[col_name] = col_value[0]
-            # check cell uid
-            tmp_cells_uid = synthesize_cell_uid_list({_k: df[_k].tolist()
-                                                      for _k in ("exp_id", "mice_id", "fov_id", "cell_id")})
-            assert tmp_cells_uid == self.cells_uid, \
-                f"Different cells_uid\nStored File: {tmp_cells_uid}\nCurrent Feature Database: {self.cells_uid}"
-
-            tmp_embedding = np.stack([df[f"embedding-{i}"] for i in range(tmp_n_dim)], axis=1)
-            new_embedding = Embedding(
-                name=embedding_name,
-                n_dim=tmp_n_dim,
-                cells_uid=tmp_cells_uid,
-                embedding=tmp_embedding,
-                labels=df["labels"],
-                params=tmp_params_dict,
-                score=tmp_score
-            )
+            new_embedding = self.load_single_embedding(xls, sheet_name)
             self._embeddings.append(new_embedding)
-
             if sheet_id % 100 == 0:
-                print(f"{sheet_id+1}/{len(xls.sheet_names)} Loading embedding: {embedding_name} -> "
+                print(f"{sheet_id+1}/{len(xls.sheet_names)}-th embedding loaded-> "
                       f"{CLUSTERING_SCORE_NAME}: {new_embedding.score:.4f}")
         print("Loading complete.")
 
@@ -274,6 +340,13 @@ class VectorSpace:
                 )
                 distance_pairs.append((tmp_euclidean_dist, tmp_chebyshev_dist))
         return np.stack(distance_pairs, axis=0)
+
+    @property
+    def all_embed_by_labelling(self) -> Dict[Labelling, List[Embedding]]:
+        all_embed_dict: Dict[Labelling, List[Embedding]] = defaultdict(list)
+        for single_embed in self._embeddings:
+            all_embed_dict[single_embed.to_labelling()].append(single_embed)
+        return all_embed_dict
 
 
 def get_feature_vector(

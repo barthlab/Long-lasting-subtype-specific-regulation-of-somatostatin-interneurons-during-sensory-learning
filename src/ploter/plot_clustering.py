@@ -18,11 +18,10 @@ from src.ploter.statistic_annotation import *
 
 
 def single_plot_embedding(ax: matplotlib.axes.Axes, single_embed: Embedding,
-                          cell_types: Dict[CellUID, CellType], legend_flag: bool = True,
-                          s: float = 3, mini: bool = False):
+                          cell_types: Dict[CellUID, CellType], cell_type_flag: bool,
+                          label_flag: bool = True, s: float = 3, ellipse_flag: bool = True):
     embedding_coordinate = single_embed.embedding
-    celltype_colors = [CELLTYPE2COLOR[cell_types[cell_uid]] for cell_uid in single_embed.cells_uid]
-    if not mini:
+    if ellipse_flag:
         for cluster_id in range(single_embed.n_cluster):
             cluster_points = embedding_coordinate[single_embed.labels == cluster_id]
             center = np.mean(cluster_points, axis=0)
@@ -34,36 +33,57 @@ def single_plot_embedding(ax: matplotlib.axes.Axes, single_embed: Embedding,
                                        facecolor=mcolors.to_rgba(CLUSTER_COLORLIST[cluster_id], 0.2),
                                        linestyle='--', linewidth=0.5, alpha=0.2)
             ax.add_patch(ellipse)
-
-    ax.scatter(embedding_coordinate[:, 0], embedding_coordinate[:, 1],
-               s=s, alpha=0.7, edgecolor='none', facecolor=celltype_colors)
+    if cell_type_flag:
+        celltype_colors = [CELLTYPE2COLOR[cell_types[cell_uid]] for cell_uid in single_embed.cells_uid]
+        ax.scatter(embedding_coordinate[:, 0], embedding_coordinate[:, 1],
+                   s=s, alpha=0.7, edgecolor='none', facecolor=celltype_colors)
+    else:
+        cluster_colors = [CLUSTER_COLORLIST[single_label] for single_label in single_embed.labels]
+        ax.scatter(embedding_coordinate[:, 0], embedding_coordinate[:, 1],
+                   s=s, alpha=0.7, edgecolor=cluster_colors, facecolor='none')
 
     legend_handles = []
-    cluster_cells = reverse_dict(single_embed.label_by_cell)
-    for cluster_id in sorted(np.unique(single_embed.labels)):
-        label_text = f'Noise ({np.sum(single_embed.labels == -1)})' if cluster_id == -1 else \
-            f'Cluster {cluster_id+1} ({np.sum(single_embed.labels == cluster_id)})'
-        *_, cnt_str = calb2_pos_neg_count(cluster_cells[cluster_id], cell_types)
-        legend_handles.append(plt.Line2D(
-            [0], [0], marker='o', linestyle="None", alpha=0.2,
-            label=label_text + cnt_str, markeredgecolor="none", markerfacecolor=CLUSTER_COLORLIST[cluster_id], ))
-    if not mini:
-        ax.set_xlabel("UMAP-1")
-        ax.set_ylabel("UMAP-2")
-        ax.set_title(f"Score: {single_embed.score:.3f} ({single_embed.n_cluster} clusters)")
-    ax.set_aspect("equal", adjustable='box')
+    if cell_type_flag:
+        n_pos = Counter(cell_types.values()).get(CellType.Calb2_Pos, 0)
+        n_neg = Counter(cell_types.values()).get(CellType.Calb2_Neg, 0)
+        if n_pos + n_neg > 0:
+            legend_handles.append(plt.Line2D(
+                [0], [0], linestyle="None", marker="o", markerfacecolor=CELLTYPE2COLOR[CellType.Calb2_Pos],
+                markeredgecolor='none', label=f"{CELLTYPE2STR[CellType.Calb2_Pos]} ({n_pos})"))
+            legend_handles.append(plt.Line2D(
+                [0], [0], linestyle="None", marker="o", markerfacecolor=CELLTYPE2COLOR[CellType.Calb2_Neg],
+                markeredgecolor='none', label=f"{CELLTYPE2STR[CellType.Calb2_Neg]} ({n_neg})"))
+    else:
+        cluster_cells = reverse_dict(single_embed.label_by_cell)
+        for cluster_id in sorted(np.unique(single_embed.labels)):
+            label_text = f'Noise ({np.sum(single_embed.labels == -1)})' if cluster_id == -1 else \
+                f'Cluster {cluster_id+1} ({np.sum(single_embed.labels == cluster_id)})'
+            *_, cnt_str = calb2_pos_neg_count(cluster_cells[cluster_id], cell_types)
+            legend_handles.append(plt.Line2D(
+                [0], [0], marker='o', linestyle="None", alpha=0.2,
+                label=label_text + cnt_str, markeredgecolor="none", markerfacecolor=CLUSTER_COLORLIST[cluster_id], ))
+    ax.set_aspect("equal")
+    ax.set_box_aspect(1)
     ax.spines[['right', 'top']].set_visible(False)
 
-    n_pos = Counter(cell_types.values())[CellType.Calb2_Pos]
-    n_neg = Counter(cell_types.values())[CellType.Calb2_Neg]
-    legend_handles.append(plt.Line2D(
-        [0], [0], linestyle="None", marker="o", markerfacecolor=CELLTYPE2COLOR[CellType.Calb2_Pos],
-        markeredgecolor='none', label=f"{CELLTYPE2STR[CellType.Calb2_Pos]} ({n_pos})"))
-    legend_handles.append(plt.Line2D(
-        [0], [0], linestyle="None", marker="o", markerfacecolor=CELLTYPE2COLOR[CellType.Calb2_Neg],
-        markeredgecolor='none', label=f"{CELLTYPE2STR[CellType.Calb2_Neg]} ({n_neg})"))
-    if legend_flag:
+    ax.set_xticks([])
+    ax.set_yticks([])
+    if label_flag:
+        ax.set_xlabel("UMAP-1")
+        ax.set_ylabel("UMAP-2")
+        ax.set_title(f"{single_embed.score:.3f}", backgroundcolor='gray', color='white')
         ax.legend(handles=legend_handles, frameon=False, fontsize=5, title_fontsize=5, loc='best')
+
+
+def plot_one_beautiful_embedding(vec_space: VectorSpace, single_embed: Embedding, save_name: str,
+                                 size: Tuple[float, float], **kwargs):
+    cell_types = vec_space.ref_feature_db.cell_types
+    fig, ax = plt.subplots(1, 1)
+    single_plot_embedding(ax, single_embed, cell_types, s=10, **kwargs)
+
+    fig.set_size_inches(*size)
+    fig.tight_layout()
+    quick_save(fig, save_name)
 
 
 def plot_embedding_summary(
@@ -79,7 +99,7 @@ def plot_embedding_summary(
         row_id, col_id = int(np.floor(embed_id/n_col)), embed_id % n_col
         tmp_ax = axs[row_id, col_id]
 
-        single_plot_embedding(tmp_ax, single_embedding, cell_types)
+        single_plot_embedding(tmp_ax, single_embedding, cell_types, cell_type_flag=True, label_flag=True, ellipse_flag=True)
 
     fig.set_size_inches(3*n_col, 3*n_row)
     fig.tight_layout()
@@ -118,7 +138,7 @@ def plot_umap_space_distance_calb2(
             alternative='less', ).pvalue for cluster_id, single_cluster in enumerate(tmp_clusters)
     ]
     fig_embed, ax_embed = plt.subplots(1, 1)
-    single_plot_embedding(ax_embed, best_embedding, cell_types)
+    single_plot_embedding(ax_embed, best_embedding, cell_types, cell_type_flag=True)
     fig_embed.set_size_inches(3, 3)
     fig_embed.tight_layout()
     quick_save(fig_embed, save_name1)
@@ -162,7 +182,7 @@ def plot_umap_space_distance_calb2(
 
         p_text, _, font_kwargs = get_asterisks(p_value_neg_less_pos[cluster_id])
         ax_marginal_right.text(0, cluster_id+2.5, p_text, **font_kwargs, rotation=-60,
-                           horizontalalignment='center', verticalalignment='center')
+                               horizontalalignment='center', verticalalignment='center')
     for tmp_ax in (ax_marginal_top, ax_marginal_right):
         tmp_ax.spines[['right', 'top', 'left', 'bottom']].set_visible(False)
     ax_marginal_top.set_yticks([])

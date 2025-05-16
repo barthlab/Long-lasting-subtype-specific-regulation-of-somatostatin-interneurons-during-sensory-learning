@@ -8,7 +8,7 @@ from src.data_status import *
 
 # average policy
 REPLACE_BAD_VALUE_FLAG = False
-DEBUG_FLAG = True
+DEBUG_FLAG = False
 FIGURE_SHOW_FLAG = 0
 
 
@@ -19,6 +19,7 @@ CALCIUM_DATA_PATH = "data/Calcium imaging"
 BEHAVIOR_DATA_PATH = "data/Behavior"
 FEATURE_DATA_PATH = "data/Feature"
 FEATURE_EXTRACTED_PATH = "data/Extracted Feature"
+BEST_CLUSTERING_PATH = "data/Best Clustering"
 FIGURE_PATH = "figures"
 SELECTED_CLUSTERING_FEATURE_JSON_PATH = path.join(
     FEATURE_EXTRACTED_PATH, "Calb2_SAT", "mitten_feature_Top25_ACC456_features.json")
@@ -86,5 +87,6 @@ RESPONSE_THRESHOLD = 0.01  # p
 # common feature
 EVOKED_RESPONSE_FEATURE = "Evoked-Response"
 FOLD_CHANGE_ACC456_FEATURE = "Fold-Change from ACC456"
+CALB2_METRIC = "Calb2 Mean"
 
 

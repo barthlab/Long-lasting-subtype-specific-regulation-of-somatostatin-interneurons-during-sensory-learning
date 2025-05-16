@@ -57,22 +57,20 @@ def plot_cell_session(single_cs: CellSession, save_name: str):
     plt.close(fig)
 
 
-def plot_image(single_image: Image, save_name: str, title: str = None,
-               additional_info: FeatureDataBase = None):
+def plot_image(single_image: Image, feature_db: FeatureDataBase, save_name: str, title: str = None):
     num_cell, num_days = len(single_image.cells_uid), len(single_image.days)
     fig, axs = plt.subplots(num_days + 1, 3 * num_cell, width_ratios=[1, 1, 2]*num_cell,
                             sharey='row', sharex='col')
     print(f"Cell num: {len(single_image.cells_uid)}", [x for x in single_image.cells_uid])
     print([x.name for x in single_image.days])
-    cell_types = {cell_uid: CellType.Unknown for cell_uid in single_image.cells_uid} if additional_info is None else (
-        additional_info.cell_types)
+    cell_types = feature_db.cell_types
 
     # plot individual data
     max_depth = 0
     cell_image_dict = single_image.split("cell_uid")
     for col_id, (cell_uid, cell_image) in enumerate(cell_image_dict.items()):  # type: int, (CellUID, Image)
         day_image_dict_percell = cell_image.split("day_id")
-        postfix = f" {additional_info.get('Calb2 Mean').get_cell(cell_uid):.1f}" if additional_info is not None\
+        postfix = f" {feature_db.get(CALB2_METRIC).get_cell(cell_uid):.1f}" if CALB2_METRIC in feature_db.feature_names\
             else ""
         axs[0, col_id * 3 + 1].set_title(cell_uid.in_short()+postfix, color=CELLTYPE2COLOR[cell_types[cell_uid]])
 
@@ -89,15 +87,6 @@ def plot_image(single_image: Image, save_name: str, title: str = None,
                     tmp_ax.plot(single_trial.df_f0.t_aligned,
                                 single_trial.df_f0.v - trial_id * DY_DF_F0 - session_dy,
                                 color=EVENT2COLOR[single_trial.trial_type], alpha=0.7, lw=1, ls=ls)
-
-                    if hasattr(single_trial, "responsiveness"):
-                        baseline_period = single_trial.df_f0.segment(*TRIAL_BASELINE_RANGE, relative_flag=True)
-                        if single_trial.responsiveness:
-                            tmp_ax.add_patch(mpatches.Rectangle(
-                                (TRIAL_BASELINE_RANGE[0], - trial_id * DY_DF_F0 - session_dy),
-                                TRIAL_BASELINE_RANGE[1]-TRIAL_BASELINE_RANGE[0], TEST_STD_RATIO*single_cs.noise_level,
-                                facecolor=OTHER_COLORS["annotate"], alpha=0.3, edgecolor='none', ))
-
                 for block_order, single_block in enumerate(single_cs.spont_blocks):
                     spont_ax.plot(single_block.df_f0.t_zeroed,
                                   single_block.df_f0.v - (block_order - 0.5) * DY_DF_F0 - session_dy,

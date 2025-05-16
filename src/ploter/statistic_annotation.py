@@ -102,7 +102,7 @@ def paired_ttest_with_Bonferroni_correction_simple_version(ax: matplotlib.axes.A
                 horizontalalignment='center', verticalalignment='center')
 
 
-def paired_ttest_with_Bonferroni_correction(ax: matplotlib.axes.Axes, data_dict: Dict[float, dict]):
+def paired_ttest_with_Bonferroni_correction(ax: matplotlib.axes.Axes, data_dict: Dict[float, dict], **p_text_kwargs):
     keys = list(data_dict.keys())
     sorted_keys = list(data_dict[keys[0]].keys())
     raw_p_values = [
@@ -128,7 +128,7 @@ def paired_ttest_with_Bonferroni_correction(ax: matplotlib.axes.Axes, data_dict:
          for dict_key, dict_values in data_dict.items() if dict_key != keys[0]])
     for comp, (p_corr, rej) in enumerate(zip(corrected_p_values, reject)):
         print(f" - {comp}: Corrected p-value = {p_corr:.4f}, Significant = {rej}")
-        p_text, _, font_kwargs = get_asterisks(p_corr)
+        p_text, _, font_kwargs = get_asterisks(p_corr, **p_text_kwargs)
         ax.text(keys[comp+1], text_position, p_text, **font_kwargs,
                 horizontalalignment='center', verticalalignment='center')
 

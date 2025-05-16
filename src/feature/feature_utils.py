@@ -184,3 +184,11 @@ def feature_name_to_label(feature_name: str) -> str:
             return "in-trial activity area under curve features"
     else:
         raise NotImplementedError
+
+
+def feature_name_to_period_name(feature_name: str) -> str:
+    for possible_period_name in ("pre-trial period", "trial evoked period", "post-trial period",
+                                 "inter-trial blocks", "init&final blocks", "final block", "init block"):
+        if possible_period_name in feature_name:
+            return possible_period_name
+

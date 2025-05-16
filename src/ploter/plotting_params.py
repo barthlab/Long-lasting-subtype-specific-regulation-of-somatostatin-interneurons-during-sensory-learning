@@ -30,13 +30,13 @@ OTHER_COLORS = {
     "PSE": 'lightpink'
 }
 CELLTYPE2COLOR = {
-    CellType.Unknown: "gray",
+    CellType.Unknown: "black",
     CellType.Calb2_Pos: "magenta",
     CellType.Calb2_Neg: "black",
-    CellType.Put_Calb2_Neg: "brown",
-    CellType.Put_Calb2_Pos: "pink",
+    CellType.Put_Calb2_Neg: "gray",
+    CellType.Put_Calb2_Pos: "violet",
 }
-FEATURE_LABEL2COLOR ={
+FEATURE_LABEL2COLOR = {
     # Response probability (favorite) - vibrant red
     "response probability feature": "#E63946",
 
@@ -51,6 +51,18 @@ FEATURE_LABEL2COLOR ={
     "spontaneous activity scale features": "#8AB17D",
     "spontaneous activity center of mass features": "#E9C46A",
     "spontaneous activity area under curve features": "#F4A261"
+}
+PERIOD_NAME2COLOR = {
+    # spont block - blue spectrum
+    "inter-trial blocks": "#1D3557",
+    "init&final blocks": "#457B9D",
+    "final block": "#A8DADC",
+    "init block": "#48CAE4",
+
+    # trial period - green/yellow spectrum
+    "pre-trial period": "#2A9D8F",
+    "trial evoked period": "#8AB17D",
+    "post-trial period": "#F4A261"
 }
 
 # fluorescence plotting
@@ -91,4 +103,6 @@ SIGNIFICANT_ANOVA_BAR_HEIGHT_PSE = 3.3
 
 # clustering
 CLUSTER_COLORLIST = list(mcolors.TABLEAU_COLORS.values())*2
+
+
 
