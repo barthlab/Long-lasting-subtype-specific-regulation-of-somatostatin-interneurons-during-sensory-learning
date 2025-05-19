@@ -20,6 +20,7 @@ from src.ploter.statistic_annotation import *
 def single_plot_embedding(ax: matplotlib.axes.Axes, single_embed: Embedding,
                           cell_types: Dict[CellUID, CellType], cell_type_flag: bool,
                           label_flag: bool = True, s: float = 3, ellipse_flag: bool = True):
+    s = s if label_flag else s * 0.75
     embedding_coordinate = single_embed.embedding
     if ellipse_flag:
         for cluster_id in range(single_embed.n_cluster):
@@ -35,8 +36,9 @@ def single_plot_embedding(ax: matplotlib.axes.Axes, single_embed: Embedding,
             ax.add_patch(ellipse)
     if cell_type_flag:
         celltype_colors = [CELLTYPE2COLOR[cell_types[cell_uid]] for cell_uid in single_embed.cells_uid]
+        zorder = [2 if cell_types[cell_uid] is CellType.Calb2_Pos else 0 for cell_uid in single_embed.cells_uid]
         ax.scatter(embedding_coordinate[:, 0], embedding_coordinate[:, 1],
-                   s=s, alpha=0.7, edgecolor='none', facecolor=celltype_colors)
+                   s=s, alpha=0.8, edgecolor='none', facecolor=celltype_colors)
     else:
         cluster_colors = [CLUSTER_COLORLIST[single_label] for single_label in single_embed.labels]
         ax.scatter(embedding_coordinate[:, 0], embedding_coordinate[:, 1],
@@ -79,7 +81,7 @@ def plot_one_beautiful_embedding(vec_space: VectorSpace, single_embed: Embedding
                                  size: Tuple[float, float], **kwargs):
     cell_types = vec_space.ref_feature_db.cell_types
     fig, ax = plt.subplots(1, 1)
-    single_plot_embedding(ax, single_embed, cell_types, s=10, **kwargs)
+    single_plot_embedding(ax, single_embed, cell_types, s=8, **kwargs)
 
     fig.set_size_inches(*size)
     fig.tight_layout()

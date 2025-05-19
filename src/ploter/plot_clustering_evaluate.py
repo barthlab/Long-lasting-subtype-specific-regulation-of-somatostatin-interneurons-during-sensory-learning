@@ -68,6 +68,9 @@ def plot_feature_summary(
             tmp_ax = axs[row_id, col_id]
 
             tmp_feature_values = [target_feature[cell_uid] for cell_uid in cells_uid]
+            if len(np.unique(tmp_feature_values)) == 1:  # numpy.linalg.LinAlgError
+                tmp_ax.remove()
+                continue
             kde = gaussian_kde(tmp_feature_values)
             density_kde = kde(xs)
             scaled_density = density_kde / np.max(density_kde)
@@ -84,9 +87,14 @@ def plot_feature_summary(
                 tmp_ax.set_ylabel(group_name, rotation=0, va="center", ha='right')
             if row_id == n_group - 1:
                 tmp_ax.set_xticks([])
-                tmp_ax.set_xlabel(f"Feature {col_id+1}")
+                tmp_ax.set_xlabel(f"#{col_id+1}")
+            if row_id == 0:
+                title_color = FEATURE_LABEL2COLOR[feature_name_to_label(feature_name)]
+                rect = plt.Rectangle((0.1, 1.2), 0.8, 0.5, clip_on=False, linewidth=0,
+                                     facecolor=title_color, edgecolor='none', transform=tmp_ax.transAxes, )
+                tmp_ax.add_patch(rect)
 
-    fig.set_size_inches(size[0]*n_feature, size[1]*n_group)
+    fig.set_size_inches(size[0]*n_feature, size[1]*n_group + size[1]*0.5)
     fig.tight_layout()
     quick_save(fig, save_name)
 
@@ -111,12 +119,13 @@ def plot_fold_change_bars(
             statistic_dict[bar_id+group_id*bar_offset] = tmp_data
         paired_ttest_with_Bonferroni_correction(ax, statistic_dict, simple_flag=True)
     ax.set_ylim(0, 2.1)
+    ax.set_yticks([0., 0.5, 1., 1.5, 2.])
     ax.spines[['right', 'top']].set_visible(False)
     ax.axvspan(0.75, len(bars_list) - 0.5, lw=0, alpha=0.4, zorder=0,
                color=OTHER_COLORS['SAT'] if feature_db.SAT_flag else OTHER_COLORS["PSE"], )
     ax.set_ylabel(r'Peak Response (Norm.)')
     ax.set_xticks(np.arange(len(bars_list))+bar_offset*((n_group-1)/2), bars_list)
-    ax.axhline(y=1, lw=1, color='black', alpha=0.7, ls='--')
+    ax.axhline(y=1, lw=1, color='black', alpha=0.4, ls='--')
     ax.tick_params(axis='x', which=u'both', length=0)
 
     fig.set_size_inches(*size)

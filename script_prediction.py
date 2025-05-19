@@ -66,7 +66,7 @@ def _plasticity_complex_visualize_calb2sat(feature_db: FeatureDataBase, top_k: i
                 CELLTYPE2COLOR[CellType.Calb2_Neg],
                 CELLTYPE2COLOR[CellType.Calb2_Pos],
                 *[CLUSTER_COLORLIST[i] for i in reversed(range(n_cluster))]
-            ], size=(0.7, 0.3)
+            ], size=(0.7/1.5, 0.3)
         )
         if n_cluster == BEST_NUM_CLUSTERS:
             for bar_name, bar_config in bar_configs.items():
@@ -132,6 +132,80 @@ def _plasticity_complex_visualize_ai148(feature_db: FeatureDataBase, top_k: int,
                 )
 
 
+def _heatmap_by_clusters_calb2sat(single_image: Image, feature_db: FeatureDataBase,
+                                  best_embedding_by_n_cluster: Dict[int, Embedding]):
+    trials_config = {
+        "stimulus_trial": {"trial_type": EventType.Puff},
+    }
+    col_config = {
+        # "sortbymice": (["ACC4", "ACC5", "ACC6", f"SAT1", f"SAT5", f"SAT9"], "mice"),
+        "single_days": (["ACC4", "ACC5", "ACC6", "SAT1", "SAT2", "SAT3", "SAT4", "SAT5", "SAT9"], "ACC6"),
+        "multiple_days": (["ACC456", 'SAT123', 'SAT456', ], "ACC456")
+    }
+
+    representative_embedding = best_embedding_by_n_cluster[BEST_NUM_CLUSTERS]
+    cluster_id_dict = reverse_dict(representative_embedding.label_by_cell)
+    for trials_name, trials_criteria in trials_config.items():
+        for col_name, (col_criteria, sort_day) in col_config.items():
+            _tmp_save_name = path.join("main_figure", f"{single_image.exp_id}",
+                                       f"{single_image.exp_id}_{trials_name}_{col_name}")
+            days_dict = {col_name: ADV_SAT[col_name] for col_name in col_criteria}
+            for cluster_id, cells_uid_list in cluster_id_dict.items():
+                plot_overview.plot_heatmap_overview_cellwise(
+                    single_image.select(Calb2=1, cell_uid=tuple(cells_uid_list)),
+                    feature_db, save_name=_tmp_save_name + f"_cluster{cluster_id}_Calb2_pos.png",
+                    days_dict=days_dict, trials_criteria=trials_criteria,
+                    sorting=(sort_day, brightness), theme_color=CELLTYPE2COLOR[CellType.Calb2_Pos],
+                    zscore_flag=True
+                )
+                plot_overview.plot_heatmap_overview_cellwise(
+                    single_image.select(Calb2=0, cell_uid=tuple(cells_uid_list)),
+                    feature_db, save_name=_tmp_save_name + f"_cluster{cluster_id}_Calb2_neg.png",
+                    days_dict=days_dict, trials_criteria=trials_criteria,
+                    sorting=(sort_day, brightness), theme_color=CELLTYPE2COLOR[CellType.Calb2_Neg],
+                    zscore_flag=True
+                )
+                plot_overview.plot_heatmap_overview_cellwise(
+                    single_image.select(cell_uid=tuple(cells_uid_list)),
+                    feature_db, save_name=_tmp_save_name + f"_cluster{cluster_id}_all_cells.png",
+                    days_dict=days_dict, trials_criteria=trials_criteria,
+                    sorting=(sort_day, brightness), theme_color=CELLTYPE2COLOR[CellType.Unknown],
+                    zscore_flag=True
+                )
+
+
+def _heatmap_by_clusters_ai148(single_image: Image, feature_db: FeatureDataBase,
+                               best_embedding_by_n_cluster: Dict[int, Embedding]):
+    _exp = "SAT" if feature_db.SAT_flag else "PSE"
+    trials_config = {
+        "stimulus_trial": {"trial_type": EventType.Puff},
+    }
+    col_config = {
+        # "sortbymice": (["ACC4", "ACC5", "ACC6", f"{_exp}1", f"{_exp}5", f"{_exp}9"], "mice"),
+        "single_days": (["ACC4", "ACC5", "ACC6", f"{_exp}1", f"{_exp}2", f"{_exp}3", f"{_exp}4", f"{_exp}5", f"{_exp}9"], "ACC6"),
+        "multiple_days": (["ACC456", f"{_exp}123", f"{_exp}456", ], "ACC456")
+    }
+
+    representative_embedding = best_embedding_by_n_cluster[BEST_NUM_CLUSTERS]
+    cluster_id_dict = reverse_dict(representative_embedding.label_by_cell)
+    for trials_name, trials_criteria in trials_config.items():
+        for col_name, (col_criteria, sort_day) in col_config.items():
+            _tmp_save_name = path.join("main_figure", f"{single_image.exp_id}",
+                                       f"{single_image.exp_id}_{trials_name}_{col_name}")
+            if feature_db.SAT_flag:
+                days_dict = {col_name: ADV_SAT[col_name] for col_name in col_criteria}
+            else:
+                days_dict = {col_name: ADV_PSE[col_name] for col_name in col_criteria}
+
+            for cluster_id, cells_uid_list in cluster_id_dict.items():
+                plot_overview.plot_heatmap_overview_cellwise(
+                    single_image.select(cell_uid=tuple(cells_uid_list)),
+                    feature_db, save_name=_tmp_save_name + f"_cluster{cluster_id}_all_cell.png",
+                    days_dict=days_dict, trials_criteria=trials_criteria,
+                    sorting=(sort_day, brightness), theme_color='black', zscore_flag=True
+                )
+
+
 def tmp_plot(vec_space: VectorSpace):
     vec_space.prepare_embedding()
     candidate_labellings = []
@@ -183,14 +257,15 @@ if __name__ == "__main__":
         feature_prepare(mitten_feature)
         mitten_vector = get_feature_vector(mitten_feature, top25_feature_names,
                                            FEATURE_SELECTED_DAYS, "Top25_ACC456")
-        tmp_plot(mitten_vector)
-        exit()
+        # tmp_plot(mitten_vector)
+        # exit()
         mitten_representative = prepare_representative_clustering(mitten_vector)
         print(mitten_representative)
         # _clustering_examples_visualization(mitten_vector, mitten_feature)
-        _embed_quality_visualize(mitten_vector, mitten_representative)
-        _plasticity_complex_visualize_calb2sat(mitten_feature, top_k=10,
-                                               best_embedding_by_n_cluster=mitten_representative)
+        _heatmap_by_clusters_calb2sat(mitten_data, mitten_feature, mitten_representative)
+        # _embed_quality_visualize(mitten_vector, mitten_representative)
+        # _plasticity_complex_visualize_calb2sat(mitten_feature, top_k=15,
+        #                                        best_embedding_by_n_cluster=mitten_representative)
 
     for exp_id in ("Ai148_SAT", "Ai148_PSE"):
         mitten = Experiment(exp_id=exp_id)
@@ -202,6 +277,7 @@ if __name__ == "__main__":
         mitten_representative = prepare_representative_clustering(mitten_vector)
         print(mitten_representative)
         # _clustering_examples_visualization(mitten_vector, mitten_feature)
+        _heatmap_by_clusters_ai148(mitten_data, mitten_feature, mitten_representative)
         _embed_quality_visualize(mitten_vector, mitten_representative)
         _plasticity_complex_visualize_ai148(mitten_feature, top_k=10,
                                             best_embedding_by_n_cluster=mitten_representative)

@@ -63,8 +63,8 @@ def brightness(ts: TimeSeries) -> float:
         return np.mean(ts.segment(start_t=0, end_t=1., relative_flag=True).v)
 
 
-def extract_avg_df_f0(single_image: Image, days_dict: Dict[str, Tuple[DayType, ...]], **trials_criteria) \
-        -> Dict[str, Dict[CellUID, TimeSeries]]:
+def extract_avg_df_f0(single_image: Image, days_dict: Dict[str, Tuple[DayType, ...]],
+                      zscore_flag: bool = False, **trials_criteria) -> Dict[str, Dict[CellUID, TimeSeries]]:
     extracted_data = defaultdict(dict)
     for group_name, group_of_days in days_dict.items():
         sub_image = single_image.select(day_id=group_of_days)
@@ -79,5 +79,7 @@ def extract_avg_df_f0(single_image: Image, days_dict: Dict[str, Tuple[DayType, .
                 extracted_data[group_name][cell_uid] = None
                 continue
             avg_df_f0, *_ = sync_timeseries([single_trial.df_f0 for single_trial in selected_trials])
+            if zscore_flag:
+                avg_df_f0.v = nan_zscore(avg_df_f0.v)
             extracted_data[group_name][cell_uid] = avg_df_f0
     return extracted_data

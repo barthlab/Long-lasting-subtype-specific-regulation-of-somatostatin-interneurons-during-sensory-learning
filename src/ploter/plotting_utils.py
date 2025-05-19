@@ -58,3 +58,10 @@ def row_col_from_n_subplots(n_subplots: int) -> Tuple[int, int]:
     else:
         return n_row+1, n_row+1
 
+
+def linear_reg(ax: matplotlib.axes.Axes, x_data, y_data, n_pts: int = 100, **kwargs):
+    slope, intercept = np.polyfit(x_data, y_data, 1)
+    regression_x = np.linspace(min(x_data), max(x_data), n_pts)
+    regression_y = slope * regression_x + intercept
+    ax.plot(regression_x, regression_y, **kwargs)
+

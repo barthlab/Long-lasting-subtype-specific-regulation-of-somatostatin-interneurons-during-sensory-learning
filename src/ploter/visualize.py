@@ -32,7 +32,7 @@ def plot_cell_session(single_cs: CellSession, save_name: str):
             facecolor=EVENT2COLOR[single_trial.trial_type], alpha=0.3, edgecolor='none', ))
 
     for block_order, single_block in enumerate(single_cs.spont_blocks):
-        axs[2].plot(single_block.df_f0.t_aligned, single_block.df_f0.v + (block_order-0.5) * DY_DF_F0,
+        axs[2].plot(single_block.df_f0.t_zeroed, single_block.df_f0.v + (block_order-0.5) * DY_DF_F0,
                     color=EVENT2COLOR[single_block.block_type], alpha=0.7, lw=1)
         axs[0].add_patch(mpatches.Rectangle(
             (single_block.block_start, -1.5 * DY_DF_F0), single_block.block_len, DY_DF_F0,
@@ -50,11 +50,7 @@ def plot_cell_session(single_cs: CellSession, save_name: str):
     fig.suptitle(single_cs.__repr__())
     fig.set_size_inches(16, 5)
     fig.tight_layout()
-    if FIGURE_SHOW_FLAG:
-        plt.show()
-    else:
-        fig.savefig(path.join(ROOT_PATH, FIGURE_PATH, save_name), bbox_inches='tight', dpi=500)
-    plt.close(fig)
+    quick_save(save_name=save_name, fig=fig)
 
 
 def plot_image(single_image: Image, feature_db: FeatureDataBase, save_name: str, title: str = None):
@@ -157,6 +153,7 @@ def plot_plasticity_manifold(features: FeatureDataBase, save_name: str):
 
     cells_types = features.cell_types
     calb2_mean = features.get("Calb2 Mean")
+    n_cell = len(cells_types)
 
     fig = plt.figure()
     ax3d_left = fig.add_subplot(2, 2, 1, projection='3d')
@@ -166,28 +163,46 @@ def plot_plasticity_manifold(features: FeatureDataBase, save_name: str):
 
     calb2_intensity = [CALB2_RESIZE_FUNC(calb2_mean.get_cell(cell_uid)) for cell_uid in features.cells_uid]
     left_dots = [
-        [dot_resize(evoked_peak_acc456.get_cell(cell_uid)) for cell_uid in features.cells_uid],
         [dot_resize(evoked_peak_sat123.get_cell(cell_uid)) for cell_uid in features.cells_uid],
+        [dot_resize(evoked_peak_acc456.get_cell(cell_uid)) for cell_uid in features.cells_uid],
         calb2_intensity,
     ]
     right_dots = [
-        [dot_resize(evoked_peak_sat123.get_cell(cell_uid)) for cell_uid in features.cells_uid],
         [dot_resize(evoked_peak_sat456.get_cell(cell_uid)) for cell_uid in features.cells_uid],
+        [dot_resize(evoked_peak_sat123.get_cell(cell_uid)) for cell_uid in features.cells_uid],
         calb2_intensity,
     ]
     dot_colors = [CELLTYPE2COLOR[cells_types[cell_uid]] for cell_uid in features.cells_uid]
 
-    ax3d_left.scatter(left_dots[0], left_dots[1], left_dots[2], color=dot_colors, alpha=0.7, s=8, clip_on=False)
-    ax2d_left.scatter(left_dots[0], left_dots[1], color=dot_colors, alpha=0.7, s=8, clip_on=False)
-    ax3d_right.scatter(right_dots[0], right_dots[1], right_dots[2], color=dot_colors, alpha=0.7, s=8, clip_on=False)
-    ax2d_right.scatter(right_dots[0], right_dots[1], color=dot_colors, alpha=0.7, s=8, clip_on=False)
+    ax3d_left.scatter(left_dots[0], left_dots[1], left_dots[2], facecolors=dot_colors, edgecolors=['white',] * n_cell,
+                      alpha=0.7, s=10, clip_on=False, lw=0.5)
+    ax2d_left.scatter(left_dots[0], left_dots[1], facecolors=dot_colors, edgecolors=['white',] * n_cell,
+                      alpha=0.9, s=10, clip_on=False, lw=0.5)
+    ax3d_right.scatter(right_dots[0], right_dots[1], right_dots[2], facecolors=dot_colors, edgecolors=['white',] * n_cell,
+                       alpha=0.7, s=10, clip_on=False, lw=0.5)
+    ax2d_right.scatter(right_dots[0], right_dots[1], facecolors=dot_colors, edgecolors=['white',] * n_cell,
+                       alpha=0.9, s=10, clip_on=False, lw=0.5)
+    for tmp_ax, dot_list in zip([ax2d_left, ax2d_right], [left_dots, right_dots]):
+        pos_dots, neg_dots = [], []
+        for cell_cnt, cell_uid in enumerate(features.cells_uid):
+            if cells_types[cell_uid] is CellType.Calb2_Pos:
+                pos_dots.append((dot_list[0][cell_cnt], dot_list[1][cell_cnt]))
+            elif cells_types[cell_uid] is CellType.Calb2_Neg:
+                neg_dots.append((dot_list[0][cell_cnt], dot_list[1][cell_cnt]))
+        pos_dots, neg_dots = np.array(pos_dots), np.array(neg_dots)
+        linear_reg(tmp_ax, pos_dots[:, 0], pos_dots[:, 1], lw=1, alpha=0.3, zorder=-2,
+                   color=CELLTYPE2COLOR[CellType.Calb2_Pos])
+        linear_reg(tmp_ax, neg_dots[:, 0], neg_dots[:, 1], lw=1, alpha=0.3, zorder=-2,
+                   color=CELLTYPE2COLOR[CellType.Calb2_Neg])
 
-    for tmp_ax in (ax3d_left, ax2d_left):
-        tmp_ax.set_xlabel(f"Evoked Response\nat ACC456 (log-{DF_F0_STR})")
-        tmp_ax.set_ylabel(f"Evoked Response\nat SAT123 (log-{DF_F0_STR})")
-    for tmp_ax in (ax3d_right, ax2d_right):
-        tmp_ax.set_xlabel(f"Evoked Response\nat SAT123 (log-{DF_F0_STR})")
-        tmp_ax.set_ylabel(f"Evoked Response\nat SAT456 (log-{DF_F0_STR})")
+    ax3d_left.set_ylabel(f"ACC456 peak response ")
+    ax3d_left.set_xlabel(f"SAT123 peak response ")
+    ax2d_left.set_ylabel(f"ACC456 peak response (log {DF_F0_STR})")
+    ax2d_left.set_xlabel(f"SAT123 peak response (log {DF_F0_STR})")
+    ax3d_right.set_ylabel(f"SAT123 peak response ")
+    ax3d_right.set_xlabel(f"SAT456 peak response ")
+    ax2d_right.set_ylabel(f"SAT123 peak response (log {DF_F0_STR})")
+    ax2d_right.set_xlabel(f"SAT456 peak response (log {DF_F0_STR})")
     yy, zz = np.meshgrid(np.linspace(-3, 1, 50), np.linspace(1, 3.5, 50))
     zticklabels = np.array([150, 200, 300, 900])
     for tmp_ax in (ax3d_left, ax3d_right):

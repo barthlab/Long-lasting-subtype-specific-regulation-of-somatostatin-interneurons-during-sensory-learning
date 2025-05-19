@@ -38,7 +38,7 @@ CELLTYPE2COLOR = {
 }
 FEATURE_LABEL2COLOR = {
     # Response probability (favorite) - vibrant red
-    "response probability feature": "#E63946",
+    "response probability features": "#E63946",
 
     # In-trial activity - blue spectrum
     "in-trial activity peak features": "#1D3557",
@@ -67,8 +67,10 @@ PERIOD_NAME2COLOR = {
 
 # fluorescence plotting
 DY_DF_F0 = 0.5
-DISPLAY_MAX_DF_F0_Calb2 = 2.5
-DISPLAY_MAX_DF_F0_Ai148 = 3.5
+DISPLAY_MAX_DF_F0_ZSCORE = 3
+DISPLAY_MAX_DF_F0_Calb2 = 1.7  # 2.5
+DISPLAY_MAX_DF_F0_Ai148 = 2.5  # 3.5
+DISPLAY_MIN_DF_F0_ZSCORE = -1.
 DISPLAY_MIN_DF_F0_Calb2 = -0.1
 DISPLAY_MIN_DF_F0_Ai148 = 1.5*DISPLAY_MAX_DF_F0_Ai148*DISPLAY_MIN_DF_F0_Calb2/DISPLAY_MAX_DF_F0_Calb2
 AVG_MAX_DF_F0_Calb2 = 1.2

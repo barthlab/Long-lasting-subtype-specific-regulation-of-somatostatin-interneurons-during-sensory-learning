@@ -18,7 +18,8 @@ from src.ploter.statistic_annotation import *
 def plot_heatmap_overview_cellwise(
         single_image: Image, feature_db: FeatureDataBase, save_name: str,
         days_dict: Dict[str, Tuple[DayType, ...]],
-        trials_criteria: dict = None, sorting: Tuple[str, Callable[TimeSeries, float]] = None, theme_color: str = "black"
+        trials_criteria: dict = None, sorting: Tuple[str, Callable[TimeSeries, float]] = None,
+        theme_color: str = "black", zscore_flag: bool = False
 ):
     """
     [heatmap 1      ] [heatmap 2      ] ... [heatmap cols_names[-1]]
@@ -29,7 +30,8 @@ def plot_heatmap_overview_cellwise(
     n_col = len(cols_names)
     trials_criteria = trials_criteria if trials_criteria is not None else {}
 
-    extracted_data = extract_avg_df_f0(single_image=single_image, days_dict=days_dict, **trials_criteria)
+    extracted_data = extract_avg_df_f0(single_image=single_image, days_dict=days_dict,
+                                       zscore_flag=zscore_flag, **trials_criteria)
 
     # sorting
     sort_col = "Record Date"
@@ -48,18 +50,25 @@ def plot_heatmap_overview_cellwise(
     # plotting
     fig, axs = plt.subplots(2, n_col+1, width_ratios=[1] * n_col + [0.08], height_ratios=[1, 0.15])
     axh, axc = axs[0, :], axs[1, :]
+    if zscore_flag:
+        vmin = DISPLAY_MIN_DF_F0_ZSCORE
+        vmax = DISPLAY_MAX_DF_F0_ZSCORE
+    else:
+        vmin = DISPLAY_MIN_DF_F0_Ai148 if feature_db.Ai148_flag else DISPLAY_MIN_DF_F0_Calb2
+        vmax = DISPLAY_MAX_DF_F0_Ai148 if feature_db.Ai148_flag else DISPLAY_MAX_DF_F0_Calb2
+
     for ax_id, col_name in enumerate(cols_names):
         grand_avg_df_f0, grand_sem_df_f0, (xs, grand_matrix) = sync_timeseries(
             [extracted_data[col_name][cell_uid] for cell_uid in cells_uid_order])
         """
-        TODO: add extent and remove searchsorted
+        TODO: add extent?
         """
         im = axh[ax_id].imshow(
             grand_matrix,
-            aspect=3,
+            aspect=4,
             origin='upper',
-            vmin=DISPLAY_MIN_DF_F0_Ai148 if feature_db.Ai148_flag else DISPLAY_MIN_DF_F0_Calb2,
-            vmax=DISPLAY_MAX_DF_F0_Ai148 if feature_db.Ai148_flag else DISPLAY_MAX_DF_F0_Calb2,
+            vmin=vmin,
+            vmax=vmax,
             cmap='viridis',
             interpolation='nearest'
         )
@@ -71,7 +80,7 @@ def plot_heatmap_overview_cellwise(
         axc[ax_id].spines[['right', 'top']].set_visible(False)
         if ax_id == 0:
             axh[ax_id].set_ylabel(f"Cell ID (Ranked on {sort_col})" if sorting is not None else "Cell ID")
-            axc[ax_id].set_ylabel(r'$\Delta F/F_0$')
+            axc[ax_id].set_ylabel(r'z-$\Delta F/F_0$' if zscore_flag else r'$\Delta F/F_0$')
             if sort_col == "mice":
                 yticks, yticklabels = [0,], [cells_uid_order[0].mice_id,]
                 for i in range(1, len(cells_uid_order)):
@@ -80,8 +89,9 @@ def plot_heatmap_overview_cellwise(
                     if current_mice_id != previous_mice_id:
                         yticks.append(i)
                         yticklabels.append(current_mice_id)
-
                 axh[ax_id].set_yticks(yticks, yticklabels)
+            elif zscore_flag:
+                axh[ax_id].set_yticks([0, ], ["00"])
         else:
             axh[ax_id].set_yticklabels([])
             axh[ax_id].set_yticks([])
@@ -91,8 +101,7 @@ def plot_heatmap_overview_cellwise(
         x_tick_loc, x_tick_pos = [-1, 0, 1, 2], []
         for x_tick in x_tick_loc:
             x_tick_pos.append(np.searchsorted(xs, x_tick))
-        axc[ax_id].set_ylim(DISPLAY_MIN_DF_F0_Ai148 if feature_db.Ai148_flag else DISPLAY_MIN_DF_F0_Calb2,
-                            AVG_MAX_DF_F0_Ai148 if feature_db.Ai148_flag else AVG_MAX_DF_F0_Calb2)
+        axc[ax_id].set_ylim(vmin, vmax)
         axh[ax_id].set_xlim(np.searchsorted(xs, -2), np.searchsorted(xs, 3))
         axc[ax_id].set_xlim(np.searchsorted(xs, -2), np.searchsorted(xs, 3))
         axh[ax_id].axvline(x=np.searchsorted(xs, 0), color='red', alpha=0.7, ls='--', lw=0.5)
@@ -102,10 +111,12 @@ def plot_heatmap_overview_cellwise(
         axc[ax_id].set_xticks(x_tick_pos, x_tick_loc)
         axh[ax_id].set_xlabel("Time [s]")
         axc[ax_id].set_xlabel("Time [s]")
+        if zscore_flag:
+            axc[ax_id].axhline(y=0, ls='--', lw=0.5, color='gray', alpha=0.7)
         axh[ax_id].set_title(col_name)
 
     cbar = fig.colorbar(im, cax=axh[-1])
-    cbar.set_label(r'$\Delta F/F_0$')
+    cbar.set_label(r'z-$\Delta F/F_0$' if zscore_flag else r'$\Delta F/F_0$')
     axc[-1].remove()
 
     fig.set_size_inches(7.5, 5)

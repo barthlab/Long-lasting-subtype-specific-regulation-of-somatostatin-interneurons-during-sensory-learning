@@ -80,6 +80,19 @@ def nan_sum(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
         return np.nansum(replaced_a, **kwargs)
 
 
+def nan_zscore(a: np.ndarray | list, **kwargs) -> np.ndarray | float:
+    if (len(a) == 0) or (np.count_nonzero(~np.isnan(a)) == 0):
+        return 0 if REPLACE_BAD_VALUE_FLAG else np.nan
+    else:
+        replaced_a = np.nan_to_num(a, nan=0, posinf=1e10, neginf=-1e10) if REPLACE_BAD_VALUE_FLAG else np.copy(a)
+        return (replaced_a - nan_mean(replaced_a, **kwargs)) / nan_std(replaced_a, **kwargs)
+
+
+def nan_free(adata: np.ndarray | list) -> np.ndarray:
+    array = np.array(adata)
+    return array[~np.isnan(array)]
+
+
 def low_pass(xs, fs, cutoff):
     nyquist = 0.5 * fs
     normal_cutoff = cutoff / nyquist

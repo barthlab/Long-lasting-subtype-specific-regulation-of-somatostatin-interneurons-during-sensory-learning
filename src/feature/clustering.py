@@ -96,7 +96,7 @@ class Embedding:
 
     @cached_property
     def label_by_cell(self) -> Dict[CellUID, float]:
-        return {cell_uid: float(self.labels[cell_cnt]) for cell_cnt, cell_uid in enumerate(self.cells_uid)}
+        return {cell_uid: self.labels[cell_cnt] for cell_cnt, cell_uid in enumerate(self.cells_uid)}
 
     def to_labelling(self) -> Labelling:
         return Labelling(tuple(self.cells_uid), tuple(self.labels))

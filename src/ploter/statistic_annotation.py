@@ -102,11 +102,19 @@ def paired_ttest_with_Bonferroni_correction_simple_version(ax: matplotlib.axes.A
                 horizontalalignment='center', verticalalignment='center')
 
 
+def adaptive_ttest(a_list: list, b_list: list, **kwargs):
+
+    if np.array_equal(np.isnan(a_list), np.isnan(b_list)):
+        return stats.ttest_rel(nan_free(a_list), nan_free(b_list), **kwargs)
+    else:
+        return stats.ttest_ind(nan_free(a_list), nan_free(b_list), **kwargs)
+
+
 def paired_ttest_with_Bonferroni_correction(ax: matplotlib.axes.Axes, data_dict: Dict[float, dict], **p_text_kwargs):
     keys = list(data_dict.keys())
     sorted_keys = list(data_dict[keys[0]].keys())
     raw_p_values = [
-        stats.ttest_rel(
+        adaptive_ttest(
             [data_dict[keys[0]][sort_key] for sort_key in sorted_keys],
             [data_dict[keys[i]][sort_key] for sort_key in sorted_keys],
         ).pvalue

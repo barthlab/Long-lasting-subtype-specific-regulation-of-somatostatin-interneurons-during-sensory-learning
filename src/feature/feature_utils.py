@@ -163,7 +163,7 @@ def feature_name_to_label(feature_name: str) -> str:
     split_names = feature_name.split(" || ")
     prefix, postfix = split_names[0], " ".join(split_names[1:])
     if prefix == "response prob":
-        return "response probability feature"
+        return "response probability features"
     elif prefix == "peak":
         return r"in-trial activity peak features"
     elif prefix == "amplitude":
