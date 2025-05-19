@@ -35,7 +35,7 @@ def get_asterisks(p_value, double_line_flag=True, simple_flag=False) -> Tuple[st
             mantissa = p_value / 10 ** exponent
             p_text = f"{asterisks}{str_between}p = {mantissa:.1f} × 10$^{{{exponent}}}$"
         else:
-            p_text = f"{asterisks}{str_between}p = {p_value:.2f}"
+            p_text = f"{asterisks}{str_between}p = {p_value:.3f}"
     else:
         p_text = asterisks
 
@@ -48,14 +48,14 @@ def get_asterisks(p_value, double_line_flag=True, simple_flag=False) -> Tuple[st
 
 
 def statistic_bar(ax: matplotlib.axes.Axes, x1: float, x2: float, y: float, p_value: float, color: str = 'black'):
-    p_text, significant_flag, font_kwargs = get_asterisks(p_value)
+    p_text, significant_flag, font_kwargs = get_asterisks(p_value, simple_flag=True)
     if significant_flag:
         lw, alpha = 0.5, 0.8
     else:
         lw, alpha = 0.5, 0.3
     ax.plot([x1, x2], [y, y], color, lw=lw, alpha=alpha)
     ax.text((x1 + x2) / 2, y, p_text, **font_kwargs,
-            horizontalalignment='center', verticalalignment='center')
+            horizontalalignment='center', verticalalignment='bottom')
 
 
 def timeseries_ttest_every_frame(ax: matplotlib.axes.Axes, data_list: List[dict], expand: bool = False):

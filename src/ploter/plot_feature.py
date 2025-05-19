@@ -19,19 +19,20 @@ from src.ploter.statistic_annotation import *
 
 
 def plot_single_feature_Calb2(
-        feature_db: FeatureDataBase, save_name: str, feature_name: str,
+        feature_db: FeatureDataBase, save_name: str, feature_name: str, sorted_features_names: List[str],
         selected_days: str = "ACC456", calb2_func=CALB2_RESIZE_FUNC,
 ):
     assert not feature_db.Ai148_flag
 
     target_feature = feature_db.get(feature_name=feature_name, day_postfix=selected_days).by_cells
+    feature_sorted_id = sorted_features_names.index(feature_name)
     cell_types = reverse_dict(feature_db.cell_types)
     calb2_value = {k: calb2_func(v) for k, v in feature_db.get('Calb2 Mean').by_cells.items()}
     if np.sum(np.isnan(list(target_feature.values()))) > 0:
         raise ValueError(f"Found nan value in target_feature: {feature_name}")
 
-    fig, ax = plt.subplots(1, 1)
-
+    fig, axs = plt.subplots(2, 1)
+    ax = axs[1]
     for cell_uid in cell_types[CellType.Calb2_Pos]:
         ax.scatter(calb2_value[cell_uid], target_feature[cell_uid],
                    s=3, color=CELLTYPE2COLOR[CellType.Calb2_Pos], alpha=0.7)
@@ -47,19 +48,22 @@ def plot_single_feature_Calb2(
 
     top_right_corner = (TEXT_OFFSET_SCALE * nan_max(list(calb2_value.values())),
                         TEXT_OFFSET_SCALE * nan_max(list(target_feature.values())))
-    ax.text(*top_right_corner, p_text, ha='right', va='top', color='black',
-            alpha=font_kwargs['alpha'], fontsize=8)
+    axs[0].text(0, 0, p_text, ha='center', va='center', color='black',
+                alpha=font_kwargs['alpha'], fontsize=8)
     ax.axvspan(calb2_func(CALB2_THRESHOLD), top_right_corner[0],
                color=CELLTYPE2COLOR[CellType.Calb2_Pos], alpha=0.1, lw=0)
 
     ax.scatter(*top_right_corner, s=0, alpha=0)
     ax.spines[['right', 'top']].set_visible(False)
+    axs[0].spines[['left', 'bottom', 'right', 'top']].set_visible(False)
+    axs[0].set_xticks([])
+    axs[0].set_yticks([])
     ax.set_xticks([calb2_func(_v) for _v in CALB2_TICKS], CALB2_TICKS)
     ax.set_xlabel("Calb2 Intensity (A.U.)")
     ax.set_ylabel(feature_name_to_y_axis_label(feature_name))
     ax.set_title(feature_name_to_title_short(feature_name), fontsize=8)
 
-    fig.set_size_inches(1.8, 1.8)
+    fig.set_size_inches(1.8, 3.2)
     fig.tight_layout()
     quick_save(fig, save_name)
 
@@ -85,45 +89,56 @@ def plot_feature_distribution_calb2(
         sorted_features_colors = [FEATURE_LABEL2COLOR[single_label]
                                   for single_label in sorted_features_labels]
 
-    fig, ax = plt.subplots(1, 1)
-    bars = ax.bar(range(n_feature), sorted_features_pvalues,
+    fig, axs = plt.subplots(2, 1)
+    ax = axs[1]
+    bar_pos = [i for i in range(top_k)] + [i+1 for i in range(top_k, n_feature)]
+    bars = ax.bar(bar_pos, sorted_features_pvalues, width=1, edgecolor='white', lw=0.5,
                   color=sorted_features_colors, log=True)
     legend_handles = []
     for label_name, label_color in PERIOD_NAME2COLOR.items() if period_name_flag else FEATURE_LABEL2COLOR.items():
         patch = mpatches.Patch(color=label_color, label=label_name)
         legend_handles.append(patch)
 
-    ax.legend(handles=legend_handles, title="Periods" if period_name_flag else "Features",
-              frameon=False, fontsize=4, title_fontsize=4)
+    axs[0].legend(handles=legend_handles, title="Periods" if period_name_flag else "Features",
+                  frameon=False)
+
     ax.set_axisbelow(True)
-    ax.yaxis.grid(color='gray')
-    ax.set_xticks([])
-    ax.axhline(y=SIGNIFICANT_P, lw=1, color='black', ls='--', alpha=0.5)
+    ax.yaxis.grid(color='gray', alpha=0.3)
+    xticks = [0, ] + [10*(i+1) - 1 for i in range(11)]
+    xticks_corrected = [i if i < top_k else i+1 for i in xticks]
+    xticklabels = [f"#{i+1}" if i < top_k else f"#{i}" for i in xticks_corrected]
+    ax.set_xticks(xticks_corrected, xticklabels)
+    ax.axhline(y=SIGNIFICANT_P, lw=1, color='black', ls='--', alpha=0.8)
     x_min, _ = ax.get_xlim()
     ax.text(x_min - 1.5, SIGNIFICANT_P, r"$\ast$" + f" {SIGNIFICANT_P}",
             ha='right', va='center', color='black')
     ax.set_xlabel("Features")
     ax.set_ylabel("p-value")
 
-    # top-k feature highlight
-    y_min, _ = ax.get_ylim()
     kth_pvalue = sorted_features_pvalues[top_k - 1]
-    rect_x, rect_y = -0.5, y_min * TEXT_OFFSET_SCALE
-    rect_width = top_k
-    rect_height = (kth_pvalue - y_min) * TEXT_OFFSET_SCALE
-    rect = mpatches.Rectangle((rect_x, rect_y), rect_width, rect_height,
-                              linewidth=1, edgecolor='red', facecolor='none',
-                              linestyle='--', clip_on=False, zorder=5)
-    ax.add_patch(rect)
-    annot_text = f"Top {top_k} Features\np <= {kth_pvalue:.2e}"
-    annot_xy = (top_k * 0.75, kth_pvalue * TEXT_OFFSET_SCALE)
-    annot_xytext = (top_k * 0.75 + n_feature * 0.05, kth_pvalue * 5)
-    ax.annotate(annot_text, xy=annot_xy, xytext=annot_xytext,
-                arrowprops=dict(facecolor='black', shrink=0.05, width=0.5, headwidth=4,
-                                connectionstyle="arc3,rad=.2"),
-                bbox=dict(boxstyle="round,pad=0.4", fc="ivory", ec="black", lw=1, alpha=0.8))
+    # top-k feature highlight
+    # y_min, _ = ax.get_ylim()
+    # rect_x, rect_y = -0.5, y_min * TEXT_OFFSET_SCALE
+    # rect_width = top_k
+    # rect_height = (kth_pvalue - y_min) * TEXT_OFFSET_SCALE
+    # rect = mpatches.Rectangle((rect_x, rect_y), rect_width, rect_height,
+    #                           linewidth=1, edgecolor='red', facecolor='none',
+    #                           linestyle='--', clip_on=False, zorder=5)
+    # ax.add_patch(rect)
 
-    fig.set_size_inches(7.5, 2.5)
+    #
+    annot_text = f"Top {top_k} Features\np <= {kth_pvalue:.2e}"
+    ax.text(top_k * 0.5, kth_pvalue * 15, annot_text, va="bottom", ha='center')
+    # ax.plot([0, top_k], [kth_pvalue, kth_pvalue], color='red', lw=2, ls='--')
+    ax.axvline(x=top_k, ymax=0.6, color='red', lw=1.5, ls='--')
+    # annot_xy = (top_k * 0.75, kth_pvalue * TEXT_OFFSET_SCALE)
+    # annot_xytext = (top_k * 0.25, kth_pvalue * 15)
+    # ax.annotate(annot_text, xy=annot_xy, xytext=annot_xytext,
+    #             arrowprops=dict(facecolor='black', shrink=0.02, width=0.5, headwidth=2,# headlength=1,
+    #                             connectionstyle="arc3,rad=.2"),
+    #             bbox=dict(boxstyle="round,pad=0.4", fc="ivory", ec="black", lw=1, alpha=0.8))
+
+    fig.set_size_inches(7.5, 5)
     fig.tight_layout()
     quick_save(fig, save_name)
 
@@ -159,7 +174,7 @@ def plot_vector_space_distance_calb2(
 
     for dot_i, dots in enumerate(all_dots):
         ax_scatter.scatter(dots[:, 0], dots[:, 1], s=2, alpha=0.7,
-                           color=colors[dot_i], label=labels[dot_i])
+                           facecolors=colors[dot_i], edgecolors='white', lw=0.1, label=labels[dot_i])
 
         kde_x = stats.gaussian_kde(dots[:, 0])
         ax_hist_x.fill_between(x_range, kde_x(x_range), color=colors[dot_i], alpha=0.3, lw=0)
@@ -167,10 +182,10 @@ def plot_vector_space_distance_calb2(
         kde_y = stats.gaussian_kde(dots[:, 1])
         ax_hist_y.fill_betweenx(y_range, kde_y(y_range), color=colors[dot_i], alpha=0.3, lw=0)
 
-    ax_scatter.set_xlabel('Euclidean Distance')
-    ax_scatter.set_ylabel('Chebyshev Distance')
+    ax_scatter.set_xlabel('Euclidean distance')
+    ax_scatter.set_ylabel('Chebyshev distance')
     # ax_scatter.grid(True, lw=0.5, ls='--', alpha=0.7, zorder=-2)
-    ax_scatter.legend(frameon=False, fontsize=5, loc="lower right")
+    # ax_scatter.legend(frameon=False, fontsize=5, loc="lower right")
     ax_scatter.spines[['right', 'top']].set_visible(False)
 
     ax_hist_x.spines[['right', 'top', 'left']].set_visible(False)
@@ -178,30 +193,31 @@ def plot_vector_space_distance_calb2(
     ax_hist_y.spines[['right', 'top', 'bottom']].set_visible(False)
     ax_hist_y.set_xticks([])
 
-    fig.set_size_inches(3, 3)
+    fig.set_size_inches(2.5, 2.5)
     fig.tight_layout()
     quick_save(fig, save_name1)
     plt.close(fig)
 
-    fig, ax = plt.subplots(1, 1)
-    for dot_i, dots in enumerate(all_dots):
-        oreo_bar(ax, dots[:, 0], x_position=dot_i, width=0.6, color=colors[dot_i], label=labels[dot_i])
+    for i, distance_name in zip([0, 1], ['Euclidean distance', 'Chebyshev distance']):
+        fig, ax = plt.subplots(1, 1)
+        for dot_i, dots in enumerate(all_dots):
+            oreo_bar(ax, dots[:, 0], x_position=dot_i, width=0.6, color=colors[dot_i], label=labels[dot_i])
 
-    y_level = np.max([np.mean(dots[:, 0]) for dots in all_dots]) + 2
-    for dot_i in range(3):
-        for dot_j in range(dot_i+1, 3):
-            _, p_value = stats.mannwhitneyu(all_dots[dot_i][:, 0], all_dots[dot_j][:, 0])
-            statistic_bar(ax, dot_i, dot_j, y_level, p_value)
-            y_level += 1.5
+        y_level = np.max([np.mean(dots[:, 0]) for dots in all_dots]) + 2
+        for dot_i in range(3):
+            for dot_j in range(dot_i+1, 3):
+                _, p_value = stats.mannwhitneyu(all_dots[dot_i][:, i], all_dots[dot_j][:, i])
+                statistic_bar(ax, dot_i, dot_j, y_level, p_value)
+                y_level += 1.5
 
-    ax.spines[['right', 'top',]].set_visible(False)
-    # ax.legend(title="Pairs", frameon=False, fontsize=4, title_fontsize=4)
-    ax.set_ylabel('Euclidean Distance')
-    ax.set_xticks([])
+        ax.spines[['right', 'top',]].set_visible(False)
+        # ax.legend(title="Pairs", frameon=False, fontsize=4, title_fontsize=4)
+        ax.set_ylabel(distance_name)
+        ax.set_xticks([])
 
-    fig.set_size_inches(1.5, 3)
-    fig.tight_layout()
-    quick_save(fig, save_name2)
-    plt.close(fig)
+        fig.set_size_inches(1.5, 1.5)
+        fig.tight_layout()
+        quick_save(fig, save_name2+f"{distance_name}.png")
+        plt.close(fig)
 
 

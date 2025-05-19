@@ -61,7 +61,7 @@ PERIOD_NAME2COLOR = {
 
     # trial period - green/yellow spectrum
     "pre-trial period": "#2A9D8F",
-    "trial evoked period": "#8AB17D",
+    "trial evoked period": "#E63946",
     "post-trial period": "#F4A261"
 }
 

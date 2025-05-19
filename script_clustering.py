@@ -5,10 +5,12 @@ def _distance_distribution_visualization(vector_list: List[VectorSpace], feature
     for _tmp_vector in vector_list:
         _tmp_save_name = path.join("distance", feature_db.ref_img.exp_id + f"_{_tmp_vector.name}")
         plot_feature.plot_vector_space_distance_calb2(
-            _tmp_vector, save_name1=_tmp_save_name+"_scatter.png", save_name2=_tmp_save_name+"_distance.png",
+            _tmp_vector, save_name1=_tmp_save_name+"_scatter.png", save_name2=_tmp_save_name+"_",
         )
+        representative_embedding = prepare_representative_clustering(vec_space=_tmp_vector)[BEST_NUM_CLUSTERS]
         plot_clustering.plot_umap_space_distance_calb2(
-            _tmp_vector, save_name1=_tmp_save_name+"_best_clustering.png",
+            _tmp_vector, best_embedding=representative_embedding,
+            save_name1=_tmp_save_name+"_best_clustering.png",
             save_name2=_tmp_save_name+"_umap_distance_matrix.png",
         )
 
@@ -22,13 +24,9 @@ def _clustering_examples_visualization(vector_list: List[VectorSpace], feature_d
 
 
 def _grid_search_visualization(single_vector: VectorSpace, feature_db: FeatureDataBase):
+    single_vector.prepare_embedding()
     _tmp_save_name = path.join("cluster_num", feature_db.ref_img.exp_id + f"_{single_vector.name}")
     plot_clustering.plot_embedding_n_neighbor_distribution(single_vector, _tmp_save_name)
-
-
-def _umap_visualization(single_vector: VectorSpace, feature_db: FeatureDataBase):
-    _tmp_save_name = path.join("umap_vis", feature_db.ref_img.exp_id + f"_{single_vector.name}.png")
-    plot_clustering.plot_umap_hyperparams_distribution(single_vector, _tmp_save_name)
 
 
 def _save_feature_order(vec_space: VectorSpace, feature_names: List[str]):
@@ -50,19 +48,20 @@ if __name__ == "__main__":
         print(top25_mitten_features)
         top25_vector = get_feature_vector(mitten_feature, top25_mitten_features,
                                           "ACC456", "Top25_ACC456")
-        top25_vector.prepare_embedding()
         # _save_feature_order(top25_vector, top25_mitten_features)
-        # _grid_search_visualization(top25_vector, mitten_feature)
-        # _umap_visualization(top25_vector, mitten_feature)
-
+        _grid_search_visualization(top25_vector, mitten_feature)
+        exit()
         # full
         full_vector = get_feature_vector(mitten_feature, list(mitten_pvalues.keys()),
                                          "ACC456", "Full_ACC456")
-        full_vector.prepare_embedding()
 
         # waveform
         waveform_vector = get_waveform_vector(mitten_feature, "ACC456", "waveform_ACC456")
-        waveform_vector.prepare_embedding()
-        # _distance_distribution_visualization([top25_vector, full_vector, waveform_vector], mitten_feature)
-        _clustering_examples_visualization([top25_vector, full_vector, waveform_vector], mitten_feature)
+
+        _distance_distribution_visualization([top25_vector, full_vector, waveform_vector], mitten_feature)
+
+        # top25_vector.prepare_embedding()
+        # full_vector.prepare_embedding()
+        # waveform_vector.prepare_embedding()
+        # _clustering_examples_visualization([top25_vector, full_vector, waveform_vector], mitten_feature)
 

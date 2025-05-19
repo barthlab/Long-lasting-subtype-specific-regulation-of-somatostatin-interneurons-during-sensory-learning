@@ -1,13 +1,16 @@
 from src import *
 
 
-def _single_feature_visualization(feature_db: FeatureDataBase, feature_names_to_plot: List[str]):
+def _single_feature_visualization(feature_db: FeatureDataBase, p_value_dict: Dict[str, float]):
     assert not feature_db.Ai148_flag
-    for single_feature_name in feature_names_to_plot:
+
+    sorted_features_names = list(p_value_dict.keys())
+    for feature_cnt, single_feature_name in enumerate(sorted_features_names):
         plot_feature.plot_single_feature_Calb2(
-            feature_db, save_name=path.join("feature", feature_db.name, feature_db.ref_img.exp_id,
-                                            feature_name_to_file_name(single_feature_name)),
-            feature_name=single_feature_name,
+            feature_db, save_name=path.join(
+                "feature", feature_db.name, feature_db.ref_img.exp_id,
+                f"feature{feature_cnt+1}_"+feature_name_to_file_name(single_feature_name)),
+            feature_name=single_feature_name, sorted_features_names=sorted_features_names
         )
 
 
@@ -17,8 +20,8 @@ if __name__ == "__main__":
         mitten_data = mitten.image
         mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
         mitten_feature_names = feature_prepare(mitten_feature)
-        # _single_feature_visualization(mitten_feature, mitten_feature_names)
         mitten_pvalues = mitten_feature.pvalue_ttest_ind_calb2(mitten_feature_names)
+        _single_feature_visualization(mitten_feature, mitten_pvalues)
         plot_feature.plot_feature_distribution_calb2(
             mitten_feature, save_name=path.join(
                 "feature", mitten_feature.name, mitten_feature.ref_img.exp_id + "_features_by_periods.png"),
@@ -29,5 +32,5 @@ if __name__ == "__main__":
                 "feature", mitten_feature.name, mitten_feature.ref_img.exp_id + "_features.png"),
             sorted_p_value_dict=mitten_pvalues
         )
-        exit()
+
 

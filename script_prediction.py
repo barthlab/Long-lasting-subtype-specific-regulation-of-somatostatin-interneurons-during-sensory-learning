@@ -8,16 +8,23 @@ def _clustering_examples_visualization(vec_space: VectorSpace, feature_db: Featu
     plot_clustering.plot_embedding_summary(vec_space, save_name=_tmp_save_name)
 
 
+def _labelling_occurrence_labeling(vec_space: VectorSpace):
+    _tmp_save_name = path.join("representative_clustering", vec_space.ref_feature_db.ref_img.exp_id, vec_space.name)
+    vec_space.prepare_embedding()
+    plot_clustering_evaluate.plot_labeling_quality_summary(
+        vec_space, save_name=_tmp_save_name + f"_summary.png", embed_dict=vec_space.all_embed_by_labelling)
+
+
 def _embed_quality_visualize(vec_space: VectorSpace, best_embedding_by_n_cluster: Dict[int, Embedding]):
     _tmp_save_name = path.join("representative_clustering", vec_space.ref_feature_db.ref_img.exp_id, vec_space.name)
-    # vec_space.prepare_embedding()
-    # plot_clustering_evaluate.plot_labeling_quality_summary(
-    #     vec_space, save_name=_tmp_save_name + f"_summary.png", embed_dict=vec_space.all_embed_by_labelling)
 
     for cluster_num, best_embed in best_embedding_by_n_cluster.items():
         plot_clustering.plot_one_beautiful_embedding(
             vec_space, best_embed, save_name=_tmp_save_name + f"_best_embed_{cluster_num}clusters_cell_type.png",
             cell_type_flag=True, ellipse_flag=False, size=(2.5, 2.5))
+        plot_clustering.plot_one_beautiful_embedding(
+            vec_space, best_embed, save_name=_tmp_save_name + f"_best_embed_{cluster_num}clusters_cell_type_small.png",
+            cell_type_flag=True, ellipse_flag=False, size=(2, 2))
         plot_clustering.plot_one_beautiful_embedding(
             vec_space, best_embed, save_name=_tmp_save_name + f"_best_embed_{cluster_num}clusters_cell_type_ellipse.png",
             cell_type_flag=True, ellipse_flag=True, size=(2, 2), label_flag=False)
@@ -262,7 +269,7 @@ if __name__ == "__main__":
         mitten_representative = prepare_representative_clustering(mitten_vector)
         print(mitten_representative)
         # _clustering_examples_visualization(mitten_vector, mitten_feature)
-        _heatmap_by_clusters_calb2sat(mitten_data, mitten_feature, mitten_representative)
+        # _heatmap_by_clusters_calb2sat(mitten_data, mitten_feature, mitten_representative)
         # _embed_quality_visualize(mitten_vector, mitten_representative)
         # _plasticity_complex_visualize_calb2sat(mitten_feature, top_k=15,
         #                                        best_embedding_by_n_cluster=mitten_representative)
@@ -277,9 +284,9 @@ if __name__ == "__main__":
         mitten_representative = prepare_representative_clustering(mitten_vector)
         print(mitten_representative)
         # _clustering_examples_visualization(mitten_vector, mitten_feature)
-        _heatmap_by_clusters_ai148(mitten_data, mitten_feature, mitten_representative)
-        _embed_quality_visualize(mitten_vector, mitten_representative)
-        _plasticity_complex_visualize_ai148(mitten_feature, top_k=10,
+        # _heatmap_by_clusters_ai148(mitten_data, mitten_feature, mitten_representative)
+        # _embed_quality_visualize(mitten_vector, mitten_representative)
+        _plasticity_complex_visualize_ai148(mitten_feature, top_k=15,
                                             best_embedding_by_n_cluster=mitten_representative)
 
 

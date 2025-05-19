@@ -60,10 +60,10 @@ def single_plot_embedding(ax: matplotlib.axes.Axes, single_embed: Embedding,
         for cluster_id in sorted(np.unique(single_embed.labels)):
             label_text = f'Noise ({np.sum(single_embed.labels == -1)})' if cluster_id == -1 else \
                 f'Cluster {cluster_id+1} ({np.sum(single_embed.labels == cluster_id)})'
-            *_, cnt_str = calb2_pos_neg_count(cluster_cells[cluster_id], cell_types)
+            *_, cnt_str = calb2_pos_neg_count(cluster_cells[cluster_id], cell_types, label_flag=False)
             legend_handles.append(plt.Line2D(
-                [0], [0], marker='o', linestyle="None", alpha=0.2,
-                label=label_text + cnt_str, markeredgecolor="none", markerfacecolor=CLUSTER_COLORLIST[cluster_id], ))
+                [0], [0], marker='o', linestyle="None",
+                label=label_text + cnt_str, markerfacecolor="none", markeredgecolor=CLUSTER_COLORLIST[cluster_id], ))
     ax.set_aspect("equal")
     ax.set_box_aspect(1)
     ax.spines[['right', 'top']].set_visible(False)
@@ -74,7 +74,7 @@ def single_plot_embedding(ax: matplotlib.axes.Axes, single_embed: Embedding,
         ax.set_xlabel("UMAP-1")
         ax.set_ylabel("UMAP-2")
         ax.set_title(f"{single_embed.score:.3f}", backgroundcolor='gray', color='white')
-        ax.legend(handles=legend_handles, frameon=False, fontsize=5, title_fontsize=5, loc='best')
+        ax.legend(handles=legend_handles, frameon=False, fontsize=5 if label_flag else 4, loc='best')
 
 
 def plot_one_beautiful_embedding(vec_space: VectorSpace, single_embed: Embedding, save_name: str,
@@ -109,7 +109,7 @@ def plot_embedding_summary(
 
 
 def plot_umap_space_distance_calb2(
-        vec_space: VectorSpace, save_name1: str, save_name2: str,
+        vec_space: VectorSpace, best_embedding: Embedding, save_name1: str, save_name2: str,
 ):
     feature_db = vec_space.ref_feature_db
 
@@ -118,7 +118,6 @@ def plot_umap_space_distance_calb2(
     calb2_p_n = reverse_dict(feature_db.cell_types)
     calb2_pos_cells_uid, calb2_neg_cells_uid = calb2_p_n[CellType.Calb2_Pos], calb2_p_n[CellType.Calb2_Neg]
 
-    best_embedding = vec_space.get_embeddings()[0]
     clusters_by_cell = reverse_dict(best_embedding.label_by_cell)
     tmp_clusters = [clusters_by_cell[i] for i in range(best_embedding.n_cluster)]
 
@@ -140,8 +139,8 @@ def plot_umap_space_distance_calb2(
             alternative='less', ).pvalue for cluster_id, single_cluster in enumerate(tmp_clusters)
     ]
     fig_embed, ax_embed = plt.subplots(1, 1)
-    single_plot_embedding(ax_embed, best_embedding, cell_types, cell_type_flag=True)
-    fig_embed.set_size_inches(3, 3)
+    single_plot_embedding(ax_embed, best_embedding, cell_types, cell_type_flag=True, label_flag=False, ellipse_flag=True)
+    fig_embed.set_size_inches(1.5, 1.5)
     fig_embed.tight_layout()
     quick_save(fig_embed, save_name1)
     plt.close(fig_embed)
@@ -178,11 +177,11 @@ def plot_umap_space_distance_calb2(
 
     # marginal axs
     for cluster_id in range(len(tmp_clusters)):
-        p_text, _, font_kwargs = get_asterisks(p_value_pos_less_neg[cluster_id])
+        p_text, _, font_kwargs = get_asterisks(p_value_pos_less_neg[cluster_id], simple_flag=True)
         ax_marginal_top.text(cluster_id+2.5, 0, p_text, **font_kwargs,
                              horizontalalignment='center', verticalalignment='center')
 
-        p_text, _, font_kwargs = get_asterisks(p_value_neg_less_pos[cluster_id])
+        p_text, _, font_kwargs = get_asterisks(p_value_neg_less_pos[cluster_id], simple_flag=True)
         ax_marginal_right.text(0, cluster_id+2.5, p_text, **font_kwargs, rotation=-60,
                                horizontalalignment='center', verticalalignment='center')
     for tmp_ax in (ax_marginal_top, ax_marginal_right):
@@ -209,14 +208,7 @@ def plot_embedding_n_neighbor_distribution(
                                     key=lambda x: x.score, reverse=True)  # type: List[Embedding]
             for row_id, single_embed in enumerate(tmp_embed_list[:top_k]):
                 single_plot_embedding(axs[row_id, col_id], single_embed, cell_types,
-                                      legend_flag=False, s=5)
-                # axs[row_id, col_id].xaxis.tick_top()
-                # axs[row_id, col_id].xaxis.set_label_position('top')
-                axs[row_id, col_id].set_xlabel(f"UMAP-1")
-                axs[row_id, col_id].set_xticks([])
-                axs[row_id, col_id].set_ylabel(f"UMAP-2")
-                axs[row_id, col_id].set_yticks([])
-                axs[row_id, col_id].set_title(f"score: {single_embed.score:.2f}")
+                                      s=3, cell_type_flag=True, label_flag=False, ellipse_flag=True)
 
             if clustering_method == "DBSCAN":
                 average_score.append([single_embed.score for single_embed in tmp_embed_list])
@@ -240,7 +232,7 @@ def plot_embedding_n_neighbor_distribution(
                     tmp_list.append(eigenvalues[cluster_num])
                 average_score.append(tmp_list)
 
-        fig.set_size_inches(5, 3)
+        fig.set_size_inches(4.5, 2.5)
         fig.tight_layout()
         quick_save(fig, save_name+clustering_method+"_top3_example.png")
 
@@ -253,10 +245,10 @@ def plot_embedding_n_neighbor_distribution(
             x_jitter = np.random.normal(loc=group_id, scale=0.15, size=len(group))
             x_jitter = np.clip(x_jitter, group_id - 0.3, group_id + 0.3)
 
-            ax_s.scatter(x_jitter, group, alpha=0.3, s=3, color='black', linewidth=0.5)
+            ax_s.scatter(x_jitter, group, alpha=0.1, s=3, color='black', linewidth=0.5)
 
         bar_dict = {1: average_score[1], **{i: average_score[i] for i in range(len(average_score))}}
-        # paired_ttest_with_Bonferroni_correction_simple_version(ax_s, bar_dict)
+        paired_ttest_with_Bonferroni_correction_simple_version(ax_s, bar_dict)
         ax_s.set_xticks(bar_position, PLOTTING_CLUSTERS_OPTIONS)
         if clustering_method == "DBSCAN":
             ax_s.set_ylabel(f"Silhouette score")
@@ -265,16 +257,17 @@ def plot_embedding_n_neighbor_distribution(
             ax_s.set_ylabel(f"Inertia")
             ax_s.set_xlabel(f"Cluster number")
             ax_s.set_ylim(0, 510)
-            ax_s.plot(bar_position, bar_heights, lw=0.5, ls='--', color='gray', alpha=0.7)
+            ax_s.plot(bar_position, bar_heights, lw=1, ls='--', color='red', alpha=0.7)
         elif clustering_method == "SPECTRAL":
             ax_s.set_xlabel(f"Eigenvalue Index (Sorted)")
             ax_s.set_ylabel(f"Eigenvalue Magnitude")
-            ax_s.plot(bar_position, bar_heights, lw=0.5, ls='--', color='gray', alpha=0.7)
+            ax_s.plot(bar_position, bar_heights, lw=1, ls='--', color='red', alpha=0.7)
         ax_s.yaxis.grid(True, linestyle='--', lw=0.5, color='grey', alpha=0.5)
         ax_s.spines[['right', 'top',]].set_visible(False)
         fig_s.set_size_inches(2.5, 2)
         fig_s.tight_layout()
         quick_save(fig_s, save_name+clustering_method+"_score_dist.png")
+        exit()
 
 
 def plot_umap_hyperparams_distribution(

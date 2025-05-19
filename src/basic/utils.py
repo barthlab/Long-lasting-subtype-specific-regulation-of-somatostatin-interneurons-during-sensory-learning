@@ -175,13 +175,13 @@ def synthesize_cell_uid_list(cell_element_dict: dict) -> List[CellUID]:
     return cells_uid
 
 
-def calb2_pos_neg_count(cells_uid: List[CellUID], cell_type_dict: Dict[CellUID, CellType]) \
+def calb2_pos_neg_count(cells_uid: List[CellUID], cell_type_dict: Dict[CellUID, CellType], label_flag: bool = True,) \
         -> Tuple[int, int, float, str]:
     n_pos = Counter([cell_type_dict[cell_uid] for cell_uid in cells_uid]).get(CellType.Calb2_Pos, 0)
     n_neg = Counter([cell_type_dict[cell_uid] for cell_uid in cells_uid]).get(CellType.Calb2_Neg, 0)
     if n_neg + n_pos > 0:
         pos_ratio = 100*n_pos/(n_pos+n_neg)
-        summary_string = f" +{n_pos} -{n_neg} {int(pos_ratio)}%"
+        summary_string = f" +{n_pos} -{n_neg} {int(pos_ratio)}%" if label_flag else f" {int(pos_ratio)}%"
         return n_pos, n_neg, pos_ratio, summary_string
     else:
         return 0, 0, 0, ""
