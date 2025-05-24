@@ -71,7 +71,7 @@ def plot_image(single_image: Image, feature_db: FeatureDataBase, save_name: str,
         axs[0, col_id * 3 + 1].set_title(cell_uid.in_short()+postfix, color=CELLTYPE2COLOR[cell_types[cell_uid]])
 
         for row_id, (single_day, cell_day_image) in enumerate(day_image_dict_percell.items()):  # type: int, (SatDay|PseDay, Image)
-            print(row_id, col_id, cell_day_image.cells_uid, cell_day_image.days, len(cell_day_image.dataset))
+            print(f"Row {row_id}, Col {col_id}", cell_day_image.cells_uid, cell_day_image.days, len(cell_day_image.dataset))
             puff_ax, blank_ax, spont_ax = axs[row_id, col_id*3], axs[row_id, col_id*3+1], axs[row_id, col_id*3+2]
             # plot one cell's one day
             session_dy = 0
@@ -128,8 +128,7 @@ def plot_image(single_image: Image, feature_db: FeatureDataBase, save_name: str,
 
     for row_id in range(num_days):
         for col_id in range(3*num_cell):
-            axs[row_id, col_id].set_ylim(
-                max_depth, DISPLAY_MAX_DF_F0_Ai148 if Ai148_FLAG[single_image.exp_id] else DISPLAY_MAX_DF_F0_Calb2)
+            axs[row_id, col_id].set_ylim(max_depth, DISPLAY_SINGLE_DF_F0_RANGE[single_image.exp_id][1])
 
     if title is not None:
         fig.suptitle(title)
@@ -144,82 +143,68 @@ def plot_image(single_image: Image, feature_db: FeatureDataBase, save_name: str,
     plt.close(fig)
 
 
-def plot_plasticity_manifold(features: FeatureDataBase, save_name: str):
+def plot_plasticity_manifold(features: FeatureDataBase, days1: str, days2: str, save_name: str):
     def dot_resize(x):
         return np.log(x)
-    evoked_peak_acc456 = features.get(EVOKED_RESPONSE_FEATURE, day_postfix="ACC456")
-    evoked_peak_sat123 = features.get(EVOKED_RESPONSE_FEATURE, day_postfix="SAT123")
-    evoked_peak_sat456 = features.get(EVOKED_RESPONSE_FEATURE, day_postfix="SAT456")
+    evoked_peak_control = features.get(EVOKED_RESPONSE_FEATURE, day_postfix=days1)
+    evoked_peak_test = features.get(EVOKED_RESPONSE_FEATURE, day_postfix=days2)
 
     cells_types = features.cell_types
     calb2_mean = features.get("Calb2 Mean")
     n_cell = len(cells_types)
 
-    fig = plt.figure()
-    ax3d_left = fig.add_subplot(2, 2, 1, projection='3d')
-    ax2d_left = fig.add_subplot(2, 2, 3, sharex=ax3d_left, sharey=ax3d_left)
-    ax3d_right = fig.add_subplot(2, 2, 2, projection='3d', sharex=ax3d_left, sharey=ax3d_left, sharez=ax3d_left)
-    ax2d_right = fig.add_subplot(2, 2, 4, sharex=ax3d_left, sharey=ax3d_left)
-
+    fig3d, ax3d = plt.subplots(1, 1, subplot_kw=dict(projection='3d'))
+    fig2d, ax2d = plt.subplots(1, 1)
     calb2_intensity = [CALB2_RESIZE_FUNC(calb2_mean.get_cell(cell_uid)) for cell_uid in features.cells_uid]
-    left_dots = [
-        [dot_resize(evoked_peak_sat123.get_cell(cell_uid)) for cell_uid in features.cells_uid],
-        [dot_resize(evoked_peak_acc456.get_cell(cell_uid)) for cell_uid in features.cells_uid],
-        calb2_intensity,
-    ]
-    right_dots = [
-        [dot_resize(evoked_peak_sat456.get_cell(cell_uid)) for cell_uid in features.cells_uid],
-        [dot_resize(evoked_peak_sat123.get_cell(cell_uid)) for cell_uid in features.cells_uid],
+    dots = [
+        [dot_resize(evoked_peak_test.get_cell(cell_uid)) for cell_uid in features.cells_uid],
+        [dot_resize(evoked_peak_control.get_cell(cell_uid)) for cell_uid in features.cells_uid],
         calb2_intensity,
     ]
     dot_colors = [CELLTYPE2COLOR[cells_types[cell_uid]] for cell_uid in features.cells_uid]
 
-    ax3d_left.scatter(left_dots[0], left_dots[1], left_dots[2], facecolors=dot_colors, edgecolors=['white',] * n_cell,
-                      alpha=0.7, s=10, clip_on=False, lw=0.5)
-    ax2d_left.scatter(left_dots[0], left_dots[1], facecolors=dot_colors, edgecolors=['white',] * n_cell,
-                      alpha=0.9, s=10, clip_on=False, lw=0.5)
-    ax3d_right.scatter(right_dots[0], right_dots[1], right_dots[2], facecolors=dot_colors, edgecolors=['white',] * n_cell,
-                       alpha=0.7, s=10, clip_on=False, lw=0.5)
-    ax2d_right.scatter(right_dots[0], right_dots[1], facecolors=dot_colors, edgecolors=['white',] * n_cell,
-                       alpha=0.9, s=10, clip_on=False, lw=0.5)
-    for tmp_ax, dot_list in zip([ax2d_left, ax2d_right], [left_dots, right_dots]):
-        pos_dots, neg_dots = [], []
-        for cell_cnt, cell_uid in enumerate(features.cells_uid):
-            if cells_types[cell_uid] is CellType.Calb2_Pos:
-                pos_dots.append((dot_list[0][cell_cnt], dot_list[1][cell_cnt]))
-            elif cells_types[cell_uid] is CellType.Calb2_Neg:
-                neg_dots.append((dot_list[0][cell_cnt], dot_list[1][cell_cnt]))
-        pos_dots, neg_dots = np.array(pos_dots), np.array(neg_dots)
-        linear_reg(tmp_ax, pos_dots[:, 0], pos_dots[:, 1], lw=1, alpha=0.3, zorder=-2,
-                   color=CELLTYPE2COLOR[CellType.Calb2_Pos])
-        linear_reg(tmp_ax, neg_dots[:, 0], neg_dots[:, 1], lw=1, alpha=0.3, zorder=-2,
-                   color=CELLTYPE2COLOR[CellType.Calb2_Neg])
+    ax3d.scatter(dots[0], dots[1], dots[2], facecolors=dot_colors, edgecolors=['white',] * n_cell,
+                 alpha=0.7, s=8, clip_on=False, lw=0.5)
+    ax2d.scatter(dots[0], dots[1], facecolors=dot_colors, edgecolors=['white',] * n_cell,
+                 alpha=0.9, s=8, clip_on=False, lw=0.5)
 
-    ax3d_left.set_ylabel(f"ACC456 peak response ")
-    ax3d_left.set_xlabel(f"SAT123 peak response ")
-    ax2d_left.set_ylabel(f"ACC456 peak response (log {DF_F0_STR})")
-    ax2d_left.set_xlabel(f"SAT123 peak response (log {DF_F0_STR})")
-    ax3d_right.set_ylabel(f"SAT123 peak response ")
-    ax3d_right.set_xlabel(f"SAT456 peak response ")
-    ax2d_right.set_ylabel(f"SAT123 peak response (log {DF_F0_STR})")
-    ax2d_right.set_xlabel(f"SAT456 peak response (log {DF_F0_STR})")
+    pos_dots, neg_dots = [], []
+    for cell_cnt, cell_uid in enumerate(features.cells_uid):
+        if cells_types[cell_uid] is CellType.Calb2_Pos:
+            pos_dots.append((dots[0][cell_cnt], dots[1][cell_cnt]))
+        elif cells_types[cell_uid] is CellType.Calb2_Neg:
+            neg_dots.append((dots[0][cell_cnt], dots[1][cell_cnt]))
+    pos_dots, neg_dots = np.array(pos_dots), np.array(neg_dots)
+    # linear_reg(ax2d, pos_dots[:, 0], pos_dots[:, 1], lw=1, alpha=0.3, zorder=-2, ls='--',
+    #            color=CELLTYPE2COLOR[CellType.Calb2_Pos])
+    # linear_reg(ax2d, neg_dots[:, 0], neg_dots[:, 1], lw=1, alpha=0.3, zorder=-2, ls='--',
+    #            color=CELLTYPE2COLOR[CellType.Calb2_Neg])
+
+    ax2d.set_ylabel(f"{simplify_day_str(days1)} peak (log {DF_F0_STR})")
+    ax2d.set_xlabel(f"{simplify_day_str(days2)} peak (log {DF_F0_STR})")
+    ax3d.set_ylabel(f"{simplify_day_str(days1)} peak")
+    ax3d.set_xlabel(f"{simplify_day_str(days2)} peak")
+
     yy, zz = np.meshgrid(np.linspace(-3, 1, 50), np.linspace(1, 3.5, 50))
     zticklabels = np.array([150, 200, 300, 900])
-    for tmp_ax in (ax3d_left, ax3d_right):
-        surf = tmp_ax.plot_surface(yy, yy, zz, color='gray', alpha=0.8)
-        tmp_ax.set_zlabel(f"Calb2 intensity (A.U.)")
-        tmp_ax.view_init(elev=0, azim=-135)
-        tmp_ax.set_box_aspect(aspect=(1, 1, 1))
-        tmp_ax.set_zticks(CALB2_RESIZE_FUNC(zticklabels), zticklabels)
-    for tmp_ax in (ax2d_left, ax2d_right):
-        tmp_ax.spines[['right', 'top']].set_visible(False)
-        tmp_ax.plot(np.linspace(-3, 1, 50), np.linspace(-3, 1, 50),
-                    ls='--', color='gray', alpha=0.8, lw=1)
-        tmp_ax.set_aspect(1)
-    for tmp_ax in (ax3d_left, ax3d_right, ax2d_left, ax2d_right):
+
+    ax3d.set_zlabel(f"Calb2 intensity (A.U.)")
+    ax3d.view_init(elev=0, azim=-135)
+    ax3d.set_box_aspect(aspect=(1, 1, 1))
+    ax3d.set_zticks(CALB2_RESIZE_FUNC(zticklabels), zticklabels)
+    ax2d.spines[['right', 'top']].set_visible(False)
+    ax2d.plot(np.linspace(-4, 2, 50), np.linspace(-4, 2, 50),
+              color='gray', alpha=0.6, lw=1)
+    ax2d.set_aspect(1)
+    for tmp_ax in (ax3d, ax2d,):
         tmp_ax.set_xlim(-3.5, 1.5)
         tmp_ax.set_ylim(-3.5, 1.5)
-    fig.set_size_inches(7, 6)
-    fig.tight_layout()
-    quick_save(fig, save_name)
+        tmp_ax.set_xticks([-3, -2, -1, 0, 1])
+        tmp_ax.set_yticks([-3, -2, -1, 0, 1])
+    fig2d.set_size_inches(2., 2.)
+    fig3d.set_size_inches(3, 2)
+    fig2d.tight_layout()
+    fig3d.tight_layout()
+    quick_save(fig2d, save_name+"_2d.png")
+    quick_save(fig3d, save_name+"_3d.png")
 

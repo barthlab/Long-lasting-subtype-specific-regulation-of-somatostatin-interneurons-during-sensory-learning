@@ -123,6 +123,20 @@ def general_filter(datalist: Iterable, **criteria) -> list:
     return [d for d in datalist if matches(d)]
 
 
+def general_select(datadict: dict, **criteria) -> dict:
+    def matches(one_data) -> bool:
+        def check_criterion(key, value):
+            retrieved_val = getattr(one_data, key, None)
+            if callable(value):
+                return value(retrieved_val)
+            elif isinstance(value, tuple):
+                return retrieved_val in value
+            else:
+                return retrieved_val == value
+        return all(check_criterion(k, v) for k, v in criteria.items())
+    return {_k: _v for _k, _v in datadict.items() if matches(_k)}
+
+
 def combine_dicts(*dicts) -> dict:
     result = defaultdict(list)
     for d in dicts:
@@ -198,5 +212,48 @@ def json_load(file_name: str) -> List[str]:
     with open(file_name, 'r', encoding='utf-8') as f:
         loaded_list = json.load(f)
     print(f"Data successfully loaded from {file_name}:")
-    print(loaded_list)
+    print(len(loaded_list), loaded_list)
     return loaded_list
+
+
+def numpy_percentile_filter(input_array: np.ndarray, s: int, q: float) -> np.ndarray:
+    if not isinstance(input_array, np.ndarray):
+        raise TypeError("Input must be a NumPy array.")
+    if input_array.ndim != 1:
+        raise ValueError("Input array must be 1-dimensional.")
+    if not isinstance(s, int) or s <= 0:
+        raise ValueError("Window size 's' must be a positive integer.")
+    if not (0 <= q <= 100):
+        raise ValueError("Percentile 'q' must be between 0 and 100.")
+
+    if input_array.size == 0:
+        return np.array([])
+
+    pad_left = s // 2
+    pad_right = s - 1 - pad_left
+    arr_padded = np.pad(input_array, (pad_left, pad_right), mode='edge')
+    shape_windows = (input_array.size, s)
+    strides_windows = (arr_padded.strides[0], arr_padded.strides[0])
+
+    windows = np.lib.stride_tricks.as_strided(arr_padded,
+                                              shape=shape_windows,
+                                              strides=strides_windows)
+    result = np.percentile(windows, q, axis=1)
+
+    return result
+
+
+def simplify_day_str(day_str: str) -> str:
+    prefix = day_str[:3]
+    if len(day_str) == 4:
+        return day_str
+    elif len(day_str) == 5:
+        return prefix + day_str[3] + "/" + day_str[4]
+    elif len(day_str) == 6:
+        return prefix + day_str[3] + "-" + day_str[5]
+    elif len(day_str) == 7:
+        assert day_str[-2:] == "10"
+        return prefix + day_str[3] + "-10"
+    else:
+        raise ValueError(f"not parsable string: {day_str}")
+

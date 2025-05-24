@@ -89,8 +89,12 @@ class FeatureDataBase:
     def __post_init__(self):
         self._features = [] if self._features is None else self._features
 
-        if self.ref_img.exp_id == "Calb2_SAT" and self.prime:
+        if (not self.Ai148_flag) and self.prime:
             self.load_Calb2()
+
+    @cached_property
+    def exp_id(self) -> str:
+        return self.ref_img.exp_id
 
     @property
     def feature_names(self) -> List[str]:
@@ -108,8 +112,12 @@ class FeatureDataBase:
     def Ai148_flag(self) -> bool:
         return Ai148_FLAG[self.ref_img.exp_id]
 
+    @cached_property
+    def calb2_expression_file_name(self):
+        return f"Expression_{self.ref_img.exp_id}.xlsx"
+
     def load_Calb2(self):
-        file_path = path.join(ROOT_PATH, FEATURE_DATA_PATH, CALB2_EXPRESSION_FILE_NAME)
+        file_path = path.join(ROOT_PATH, FEATURE_DATA_PATH, self.calb2_expression_file_name)
         features = read_xlsx_sheet(file_path, header=0, sheet_id=0)
         num_cell, _ = features.shape
 

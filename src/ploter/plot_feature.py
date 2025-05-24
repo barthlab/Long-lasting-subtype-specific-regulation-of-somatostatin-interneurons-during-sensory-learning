@@ -5,6 +5,10 @@ import os.path as path
 from collections import defaultdict
 from itertools import chain
 from scipy import stats
+from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
+from scipy.spatial.distance import pdist
+import seaborn as sns
+import matplotlib.transforms as transforms
 
 from src.data_manager import *
 from src.basic.utils import *
@@ -69,7 +73,7 @@ def plot_single_feature_Calb2(
 
 
 def plot_feature_distribution_calb2(
-        feature_db: FeatureDataBase, save_name: str, sorted_p_value_dict: Dict[str, float], top_k: int = 25,
+        feature_db: FeatureDataBase, save_name: str, sorted_p_value_dict: Dict[str, float], top_k: int = 30,
         period_name_flag: bool = False
 ):
     assert not feature_db.Ai148_flag
@@ -104,7 +108,7 @@ def plot_feature_distribution_calb2(
 
     ax.set_axisbelow(True)
     ax.yaxis.grid(color='gray', alpha=0.3)
-    xticks = [0, ] + [10*(i+1) - 1 for i in range(11)]
+    xticks = [0, ] + [10*(i+1) - 1 for i in range(int(n_feature/10))]
     xticks_corrected = [i if i < top_k else i+1 for i in xticks]
     xticklabels = [f"#{i+1}" if i < top_k else f"#{i}" for i in xticks_corrected]
     ax.set_xticks(xticks_corrected, xticklabels)
@@ -130,7 +134,7 @@ def plot_feature_distribution_calb2(
     annot_text = f"Top {top_k} Features\np <= {kth_pvalue:.2e}"
     ax.text(top_k * 0.5, kth_pvalue * 15, annot_text, va="bottom", ha='center')
     # ax.plot([0, top_k], [kth_pvalue, kth_pvalue], color='red', lw=2, ls='--')
-    ax.axvline(x=top_k, ymax=0.6, color='red', lw=1.5, ls='--')
+    ax.axvline(x=top_k, ymax=0.7, color='red', lw=1., ls='--')
     # annot_xy = (top_k * 0.75, kth_pvalue * TEXT_OFFSET_SCALE)
     # annot_xytext = (top_k * 0.25, kth_pvalue * 15)
     # ax.annotate(annot_text, xy=annot_xy, xytext=annot_xytext,
@@ -193,7 +197,7 @@ def plot_vector_space_distance_calb2(
     ax_hist_y.spines[['right', 'top', 'bottom']].set_visible(False)
     ax_hist_y.set_xticks([])
 
-    fig.set_size_inches(2.5, 2.5)
+    fig.set_size_inches(4, 4)
     fig.tight_layout()
     quick_save(fig, save_name1)
     plt.close(fig)
@@ -215,9 +219,108 @@ def plot_vector_space_distance_calb2(
         ax.set_ylabel(distance_name)
         ax.set_xticks([])
 
-        fig.set_size_inches(1.5, 1.5)
+        fig.set_size_inches(2, 2)
         fig.tight_layout()
         quick_save(fig, save_name2+f"{distance_name}.png")
         plt.close(fig)
 
 
+def plot_feature_hierarchy_structure(
+        feature_db: FeatureDataBase, save_name: str, feature_names: List[str], sorted_p_value_dict: Dict[str, float],
+        selected_days: str = "ACC456",
+):
+    if feature_db.Ai148_flag:
+        sorted_cells_uid = feature_db.cells_uid
+    else:
+        calb2_mean = feature_db.get("Calb2 Mean").by_cells
+        cell_types = feature_db.cell_types
+        sorted_cells_uid = sorted(list(calb2_mean.keys()), key=lambda cell_uid: calb2_mean[cell_uid], reverse=True)
+        fig, ax = plt.subplots(1, 1)
+        for row_id, cell_uid in enumerate(sorted_cells_uid):
+            ax.barh(-row_id, CALB2_RESIZE_FUNC(calb2_mean[cell_uid]), color=CELLTYPE2COLOR[cell_types[cell_uid]], lw=0)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.spines[['right', 'left', 'bottom', 'top']].set_visible(False)
+        fig.set_size_inches(0.5, 1)
+        fig.tight_layout()
+        quick_save(fig, save_name + "_calb2.png")
+
+    all_features = {}
+    for single_feature_name in feature_names:
+        tmp_feature_by_cells = feature_db.get(feature_name=single_feature_name, day_postfix=selected_days).standardized().by_cells
+        feature_vector = np.array([tmp_feature_by_cells[cell_uid] for cell_uid in sorted_cells_uid])
+        all_features[single_feature_name] = feature_vector
+    feature_matrix = np.array(list(all_features.values()))
+    n_feature, n_cell = feature_matrix.shape
+
+    distance_matrix = pdist(feature_matrix, metric='euclidean')
+    linked = linkage(distance_matrix, method='ward')
+
+    fig, axss = plt.subplots(3, 2,  height_ratios=[0.6, 1, 0.8], width_ratios=[1, 0.02], sharex='col')
+    plt.subplots_adjust(hspace=0)
+    axs = axss[:, 0]
+    dendro_info = dendrogram(linked, ax=axs[0], orientation='top',
+                             distance_sort='descending', show_leaf_counts=True)
+    axs[0].set_title('Hierarchical Dendrogram')
+    reordered_feature_names = [feature_names[i] for i in dendro_info['leaves']]
+    reordered_feature_color = [FEATURE_LABEL2COLOR[feature_name_to_label(single_feature)]
+                               for single_feature in reordered_feature_names]
+
+    axs[0].spines[['right', 'top', 'bottom']].set_visible(False)
+    axs[0].tick_params(axis='x', which='both', length=0, labelbottom=False, )
+    # axs[0].set_xlabel('Features')
+    axs[0].set_ylabel('Distance (Ward)')
+
+    xticks_locations = axs[0].get_xticks()
+    bar_height = [sorted_p_value_dict[single_feature] for single_feature in reordered_feature_names]
+    bar_color = [FEATURE_LABEL2COLOR[feature_name_to_label(single_feature)]
+                 for single_feature in reordered_feature_names]
+
+    axss[0, 1].remove()
+    axss[2, 1].remove()
+
+    reordered_features = feature_matrix[dendro_info['leaves'], :]
+    print(reordered_features.shape)
+    sns.heatmap(reordered_features.T.repeat(10, axis=1), vmin=-5, vmax=5,
+                ax=axs[1], cmap='bwr', cbar_ax=axss[1, 1], cbar_kws={'label': 'Normalized Feature Value'})
+    axs[1].set_ylabel("Cells")
+    axs[1].set_yticks([])
+    axs[1].tick_params(axis='x', which='both', length=0, labelbottom=False, )
+
+    blended_transform = transforms.blended_transform_factory(axs[2].transData, axs[2].transAxes)
+    for xtick, pvalue in zip(xticks_locations, bar_height):
+        if pvalue > SIGNIFICANT_P_EXTRA:
+            continue
+        rect = mpatches.Rectangle(
+            (xtick-5, 1.1), 10, 0.05, lw=0, zorder=3,
+            edgecolor='none', facecolor='black', transform=blended_transform)
+        axs[2].add_patch(rect)
+        rect.set_clip_on(False)
+
+    bars = axs[2].bar(xticks_locations, bar_height,
+                      width=10, edgecolor='white', lw=1,
+                      color=bar_color, log=True)
+    axs[2].invert_yaxis()
+
+    axs[2].spines[['right', 'left', 'bottom']].set_visible(False)
+    axs[2].yaxis.grid(color='gray', alpha=0.3)
+    # axs[2].tick_params(axis='x', which='both', length=0, labeltop=False,)
+    # axs[2].axhline(y=SIGNIFICANT_P, lw=1, color='black', ls='--', alpha=0.8)
+    axs[2].axhline(y=SIGNIFICANT_P_EXTRA, lw=1, color='black', ls='--', alpha=0.8)
+
+    x_min, x_max = axs[1].get_xlim()
+    # axs[2].text(x_max + 2.5, SIGNIFICANT_P, r"$\ast$" + f" {SIGNIFICANT_P}",
+    #             ha='left', va='center', color='black')
+    axs[2].text(x_max + 2.5, SIGNIFICANT_P_EXTRA, r"$\ast$"*2 + f" {SIGNIFICANT_P_EXTRA}",
+                ha='left', va='center', color='black')
+    axs[2].set_ylabel("p-value")
+
+    axs[2].tick_params(axis='x', which='both', length=0, )
+    axs[2].set_xticks(xticks_locations, reordered_feature_names, rotation=90, fontsize=4)
+    for i, xtick_label in enumerate(axs[2].xaxis.get_ticklabels()):
+        xtick_label.set_color(reordered_feature_color[i])
+
+    fig.set_size_inches(8., 4)
+    fig.tight_layout()
+    quick_save(fig, save_name+".png")
+    # plt.show()

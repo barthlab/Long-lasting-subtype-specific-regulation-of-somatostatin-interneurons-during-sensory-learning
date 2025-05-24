@@ -19,6 +19,11 @@ LOST_FOV = {
     FovUID(exp_id="Calb2_PSE", mice_id="M202", fov_id=3): [PseDay.ACC1, ],
     FovUID(exp_id="Calb2_PSE", mice_id="M204", fov_id=2): [PseDay.ACC1, PseDay.ACC2, PseDay.ACC3, ],
     FovUID(exp_id="Calb2_PSE", mice_id="M204", fov_id=3): [PseDay.ACC1, PseDay.ACC2, PseDay.ACC3, ],
+    FovUID(exp_id="Calb2_PSE", mice_id="M205", fov_id=4): [PseDay.ACC1, PseDay.ACC2, ],
+    FovUID(exp_id="Calb2_PSE", mice_id="M206", fov_id=1): [PseDay.PSE1, ],
+    FovUID(exp_id="Calb2_PSE", mice_id="M206", fov_id=2): [PseDay.PSE1, ],
+    FovUID(exp_id="Calb2_PSE", mice_id="M206", fov_id=3): [PseDay.ACC1, PseDay.ACC2, PseDay.PSE1, ],
+    FovUID(exp_id="Calb2_PSE", mice_id="M206", fov_id=4): [PseDay.ACC1, PseDay.ACC2, PseDay.PSE1, ],
 }
 
 

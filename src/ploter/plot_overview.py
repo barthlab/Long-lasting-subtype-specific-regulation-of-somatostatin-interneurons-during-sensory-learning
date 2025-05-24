@@ -51,11 +51,9 @@ def plot_heatmap_overview_cellwise(
     fig, axs = plt.subplots(2, n_col+1, width_ratios=[1] * n_col + [0.08], height_ratios=[1, 0.15])
     axh, axc = axs[0, :], axs[1, :]
     if zscore_flag:
-        vmin = DISPLAY_MIN_DF_F0_ZSCORE
-        vmax = DISPLAY_MAX_DF_F0_ZSCORE
+        vmin, vmax = DISPLAY_SINGLE_DF_F0_RANGE["zscore"]
     else:
-        vmin = DISPLAY_MIN_DF_F0_Ai148 if feature_db.Ai148_flag else DISPLAY_MIN_DF_F0_Calb2
-        vmax = DISPLAY_MAX_DF_F0_Ai148 if feature_db.Ai148_flag else DISPLAY_MAX_DF_F0_Calb2
+        vmin, vmax = DISPLAY_SINGLE_DF_F0_RANGE[single_image.exp_id]
 
     for ax_id, col_name in enumerate(cols_names):
         grand_avg_df_f0, grand_sem_df_f0, (xs, grand_matrix) = sync_timeseries(
@@ -101,7 +99,7 @@ def plot_heatmap_overview_cellwise(
         x_tick_loc, x_tick_pos = [-1, 0, 1, 2], []
         for x_tick in x_tick_loc:
             x_tick_pos.append(np.searchsorted(xs, x_tick))
-        axc[ax_id].set_ylim(vmin, vmax)
+        axc[ax_id].set_ylim(-0.2, 0.6)
         axh[ax_id].set_xlim(np.searchsorted(xs, -2), np.searchsorted(xs, 3))
         axc[ax_id].set_xlim(np.searchsorted(xs, -2), np.searchsorted(xs, 3))
         axh[ax_id].axvline(x=np.searchsorted(xs, 0), color='red', alpha=0.7, ls='--', lw=0.5)
@@ -163,7 +161,7 @@ def plot_peak_complex(
             statistic_dict.append(tmp_data)
 
         # comparing first two set of the timeseries, every frame do paired
-        timeseries_ttest_every_frame(axt[image_id], statistic_dict, expand=feature_db.Ai148_flag)
+        # timeseries_ttest_every_frame(axt[image_id], statistic_dict, expand=feature_db.Ai148_flag)
 
         statistic_dict = {}
         for bar_id, bar_name in enumerate(bar_days):
@@ -208,8 +206,7 @@ def plot_peak_complex(
             {day_id: tmp_feature.get_day(day_id) for day_id in single_feature_db.days}, color=image_color[image_id])
 
     for image_id in range(n_img):
-        axt[image_id].set_ylim(DISPLAY_MIN_DF_F0_Ai148 if feature_db.Ai148_flag else DISPLAY_MIN_DF_F0_Calb2,
-                               AVG_MAX_DF_F0_Ai148 if feature_db.Ai148_flag else AVG_MAX_DF_F0_Calb2)
+        axt[image_id].set_ylim(*DISPLAY_SINGLE_DF_F0_RANGE[feature_db.exp_id])
         axt[image_id].spines[['right', 'top']].set_visible(False)
         axt[image_id].axvspan(0, 0.5, lw=0, color=OTHER_COLORS['puff'], alpha=0.4)
         axt[image_id].set_xticks([0, 2])
@@ -219,13 +216,13 @@ def plot_peak_complex(
             axt[image_id].spines[['left', ]].set_visible(False)
         else:
             axt[image_id].set_ylabel(r'$\Delta F/F_0$')
-    axb.set_ylim(0, AVG_MAX_DF_F0_Ai148 if feature_db.Ai148_flag else AVG_MAX_DF_F0_Calb2)
+    axb.set_ylim(*DISPLAY_AVG_DF_F0_RANGE[feature_db.exp_id])
     axb.spines[['right', 'top']].set_visible(False)
     axb.axvspan(0.75, len(bar_days)-0.5, lw=0, alpha=0.4, zorder=0,
                 color=OTHER_COLORS['SAT'] if feature_db.SAT_flag else OTHER_COLORS["PSE"], )
     axb.set_ylabel(r'Peak response ($\Delta F/F_0$)')
     axb.set_xticks(np.arange(len(bar_days)), bar_days, rotation=25)
-    axc.set_ylim(0, AVG_MAX_FOLD_Ai148 if feature_db.Ai148_flag else AVG_MAX_FOLD_Calb2)
+    axc.set_ylim(*DISPLAY_FOLD_CHANGE_RANGE[feature_db.exp_id])
     axc.spines[['right', 'top']].set_visible(False)
     axc.set_xticks([day_id.value for day_id in feature_db.days],
                    [day_id.name for day_id in feature_db.days], rotation=45,)
@@ -234,7 +231,7 @@ def plot_peak_complex(
                 color=OTHER_COLORS['SAT'] if feature_db.SAT_flag else OTHER_COLORS["PSE"], )
     axc.axhline(y=1., lw=1, c='red', ls=':', alpha=0.7)
 
-    fig.set_size_inches(7.5, 1.7)
+    fig.set_size_inches(7.5, 2)
     fig.tight_layout()
     quick_save(fig, save_name)
 

@@ -11,7 +11,8 @@ from src.data_manager import *
 
 OPTIONS_TIME_RANGE = {
     "pre-trial period": {"start_t": -2, "end_t": 0},  # s
-    "trial evoked period": {"start_t": 0, "end_t": 2},  # s
+    "evoked-trial period": {"start_t": 0, "end_t": 2},  # s
+    # "decay-trial period": {"start_t": 1, "end_t": 2},  # s
     "post-trial period": {"start_t": 2, "end_t": 4},  # s
 }
 
@@ -22,10 +23,12 @@ OPTIONS_TRIAL_GROUP = {
 }
 
 OPTIONS_SPONT_BLOCK_GROUP = {
+    "init&final blocks": {"block_type": (BlockType.PreBlock, BlockType.PostBlock)},
     "init block": {"block_type": BlockType.PreBlock},
     "final block": {"block_type": BlockType.PostBlock},
     "inter-trial blocks": {"block_type": BlockType.InterBlock},
-    "init&final blocks": {"block_type": (BlockType.PreBlock, BlockType.PostBlock)},
+    # "after-stim blocks": {"block_type": BlockType.InterBlock, "pre_block_type": EventType.Puff},
+    # "after-blank blocks": {"block_type": BlockType.InterBlock, "pre_block_type": EventType.Blank},
 }
 
 
@@ -76,7 +79,11 @@ OPTIONS_ELEMENT_FEATURE_TRIAL_PERIOD = {
 }
 
 
-OPTIONS_STD_RATIO = {
+OPTIONS_RESPONSIVE_STD_RATIO = {
+    f"{i}std": {"ratio_std": i} for i in [2, 3, 5, 10]
+}
+
+OPTIONS_EVENT_DETECTION_STD_RATIO = {
     f"{i}std": {"ratio_std": i} for i in [2, 3, 5, 10]
 }
 
@@ -109,8 +116,9 @@ def element_feature_compute_block_activity_auc(
 def element_feature_compute_block_activity_com(
         single_block: SpontBlock,
 ):
-    x, y = single_block.df_f0.t_zeroed, single_block.df_f0.v
-    return np.trapz(y * x, x=x)/np.trapz(y, x=x)
+    block_clip = single_block.df_f0
+    x, y = block_clip.t_zeroed, block_clip.v
+    return np.trapz(y * x, x=x) / np.trapz(y, x=x)
 
 
 OPTIONS_ELEMENT_FEATURE_SPONT_BLOCK_OVERALL_STD_RELATED = {
@@ -120,16 +128,15 @@ OPTIONS_ELEMENT_FEATURE_SPONT_BLOCK_OVERALL_STD_RELATED = {
 
 OPTIONS_ELEMENT_FEATURE_SPONT_BLOCK_BASIC = {
     "auc": element_feature_compute_block_activity_auc,
-    "com": element_feature_compute_block_activity_com,
 }
 
 
 def feature_name_to_y_axis_label(feature_name: str) -> str:
     split_names = feature_name.split(" || ")
     if split_names[0] == "response prob":
-        return "response prob (%)"
+        return "response probability (%)"
     elif split_names[0] in ("peak", "amplitude"):
-        return r"activity peak ($\Delta F/F_0$)"
+        return r"response peak ($\Delta F/F_0$)"
     elif split_names[0] in ("latency", ):
         return "peak latency (s)"
     elif split_names[0] in ("count", ):
@@ -187,8 +194,7 @@ def feature_name_to_label(feature_name: str) -> str:
 
 
 def feature_name_to_period_name(feature_name: str) -> str:
-    for possible_period_name in ("pre-trial period", "trial evoked period", "post-trial period",
-                                 "inter-trial blocks", "init&final blocks", "final block", "init block"):
+    for possible_period_name in list(OPTIONS_TIME_RANGE.keys()) + list(OPTIONS_SPONT_BLOCK_GROUP.keys()):
         if possible_period_name in feature_name:
             return possible_period_name
 

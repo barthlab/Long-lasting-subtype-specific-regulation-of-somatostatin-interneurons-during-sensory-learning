@@ -33,20 +33,20 @@ def oreo_bar(ax: matplotlib.axes.Axes, list_values: List[float], x_position: flo
     mean_bar, sem_bar = nan_mean(list_values), nan_sem(list_values)
     ax.bar(x_position, mean_bar, yerr=sem_bar, error_kw=dict(lw=1, capsize=1, capthick=1), width=width, **kwargs)
 
-
-def pool_boolean_array(arr: np.ndarray, xs: np.ndarray, threshold=0.5) -> np.ndarray:
-    tmp_fs = (len(xs)-1) / (xs[-1]-xs[0])
-    window_size = int(SIGNIFICANT_TRACE_POOLING_WINDOW * tmp_fs)
-    n = arr.shape[0]
-
-    trimmed_len = n - (n % window_size)
-    if trimmed_len == 0:
-        return np.array([], dtype=bool)
-    trimmed_arr = arr[:trimmed_len]
-
-    mean_vals = trimmed_arr.reshape(-1, window_size).astype(np.float32).mean(axis=1)
-    pooled_result = mean_vals >= threshold
-    return pooled_result
+#
+# def pool_boolean_array(arr: np.ndarray, xs: np.ndarray, threshold=0.5) -> np.ndarray:
+#     tmp_fs = (len(xs)-1) / (xs[-1]-xs[0])
+#     window_size = int(SIGNIFICANT_TRACE_POOLING_WINDOW * tmp_fs)
+#     n = arr.shape[0]
+#
+#     trimmed_len = n - (n % window_size)
+#     if trimmed_len == 0:
+#         return np.array([], dtype=bool)
+#     trimmed_arr = arr[:trimmed_len]
+#
+#     mean_vals = trimmed_arr.reshape(-1, window_size).astype(np.float32).mean(axis=1)
+#     pooled_result = mean_vals >= threshold
+#     return pooled_result
 
 
 def row_col_from_n_subplots(n_subplots: int) -> Tuple[int, int]:
@@ -64,4 +64,14 @@ def linear_reg(ax: matplotlib.axes.Axes, x_data, y_data, n_pts: int = 100, **kwa
     regression_x = np.linspace(min(x_data), max(x_data), n_pts)
     regression_y = slope * regression_x + intercept
     ax.plot(regression_x, regression_y, **kwargs)
+
+
+def set_size(w, h, fig):
+    l = fig.subplotpars.left
+    r = fig.subplotpars.right
+    t = fig.subplotpars.top
+    b = fig.subplotpars.bottom
+    figw = float(w) / (r - l)
+    figh = float(h) / (t - b)
+    fig.set_size_inches(figw, figh)
 

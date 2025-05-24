@@ -194,6 +194,7 @@ class SpontBlock:
     fov_id: int
 
     block_type: BlockType
+    pre_block_type: EventType | None
     block_id: int | None
     block_start: float = field(init=False)
     block_len: float = field(init=False)
@@ -259,8 +260,8 @@ class CellSession:
 
         # calculate df/f0
         self.baseline = TimeSeries(
-            v=percentile_filter(self.fluorescence.v, size=GLOBAL_BASELINE_WINDOW,
-                                percentile=GLOBAL_BASELINE_PERCENTILE, ),
+            v=numpy_percentile_filter(self.fluorescence.v, s=GLOBAL_BASELINE_WINDOW,
+                                      q=GLOBAL_BASELINE_PERCENTILE, ),
             t=self.fluorescence.t,
             drop=self.fluorescence.drop,
             origin_t=self.fluorescence.origin_t
@@ -313,6 +314,7 @@ class CellSession:
             SpontBlock(
                 **kwargs,
                 block_type=BlockType.PreBlock,
+                pre_block_type=None,
                 block_id=None,
                 fluorescence=self.fluorescence.segment(end_t=self.stims.t[0] + BLOCK_PRE_TRIAL),
                 baseline=self.baseline.segment(end_t=self.stims.t[0] + BLOCK_PRE_TRIAL),
@@ -325,6 +327,7 @@ class CellSession:
             self.spont_blocks.append(SpontBlock(
                 **kwargs,
                 block_type=BlockType.InterBlock,
+                pre_block_type=self.stims.label[block_id],
                 block_id=block_id,
                 fluorescence=self.fluorescence.segment(start_t=stim_time + BLOCK_POST_TRIAL, end_t=block_end_time),
                 baseline=self.baseline.segment(start_t=stim_time + BLOCK_POST_TRIAL, end_t=block_end_time),
@@ -334,6 +337,7 @@ class CellSession:
         self.spont_blocks.append(SpontBlock(
             **kwargs,
             block_type=BlockType.PostBlock,
+            pre_block_type=None,
             block_id=None,
             fluorescence=self.fluorescence.segment(start_t=self.stims.t[-1] + LAST_BLOCK_LEN),
             baseline=self.baseline.segment(start_t=self.stims.t[-1] + LAST_BLOCK_LEN),
@@ -455,6 +459,8 @@ class FOV:
 
         # data extraction prepare
         num_raw_session = int(num_total_frames / self.session_frames)
+        if DEBUG_FLAG:
+            print(f"{self.mice_id} FOV{self.fov_id} has {self.num_cell} cells {num_raw_session} sessions")
         self.num_session_per_day = 1 if num_raw_session <= 16 else 2
         days = EXP2DAY[self.exp_id]
         days_in_data, days_to_extract = list(days), list(days)
@@ -473,9 +479,11 @@ class FOV:
         valid_days = sorted(list(set(days_in_data).intersection(set(days_to_extract))), key=lambda x: x.value)
         assert total_fluorescence.shape[1] == self.session_frames * len(days_in_data) * self.num_session_per_day, \
             (f"fluorescence shape doesn't match: "
-             f"{total_fluorescence.shape}[1] != {self.session_frames} x {len(days_in_data)} x {self.num_session_per_day}")
+             f"{total_fluorescence.shape}[1] != {self.session_frames} x {len(days_in_data)} x {self.num_session_per_day}"
+             f" in {self.mice_id} FOV{self.fov_id}")
         assert len(puff_types.keys()) == len(puff_times.keys()) == len(days_in_data) * 2, \
-            (f"Mismatch data in Arduino.xlsx file Arduino time point.xlsx: found {len(days_in_data)} sessions in "
+            (f"Mismatch data in Arduino.xlsx file Arduino time point.xlsx in {self.mice_id} FOV{self.fov_id}:"
+             f" found {len(days_in_data)} sessions in "
              f"{self.mice_id} FOV{self.fov_id}, but Arduino.xlsx has {len(puff_types.keys())} sheets and "
              f"Arduino time point.xlsx has {len(puff_times.keys())} sheets")
 

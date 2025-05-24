@@ -21,8 +21,13 @@ FEATURE_DATA_PATH = "data/Feature"
 FEATURE_EXTRACTED_PATH = "data/Extracted Feature"
 BEST_CLUSTERING_PATH = "data/Best Clustering"
 FIGURE_PATH = "figures"
-SELECTED_CLUSTERING_FEATURE_JSON_PATH = path.join(
-    FEATURE_EXTRACTED_PATH, "Calb2_SAT", "mitten_feature_Top25_ACC456_features.json")
+SORTED_FEATURE_NAMES_JSON_PATH = {
+    "Calb2_SAT": path.join(FEATURE_EXTRACTED_PATH, "sat_sorted_feature_names.json"),
+    "Ai148_SAT": path.join(FEATURE_EXTRACTED_PATH, "sat_sorted_feature_names.json"),
+    "Calb2_PSE": path.join(FEATURE_EXTRACTED_PATH, "pse_sorted_feature_names.json"),
+    "Ai148_PSE": path.join(FEATURE_EXTRACTED_PATH, "pse_sorted_feature_names.json"),
+}
+TASK_NAME = "mitten"
 
 
 # experiment related
@@ -42,7 +47,6 @@ Ai148_FLAG = {
 BASELINE_DAYS = "ACC456"
 
 # Calb2 related
-CALB2_EXPRESSION_FILE_NAME = "Expression_Calb2_SAT.xlsx"
 CALB2_THRESHOLD = 200  # A.U.
 CALB2_MINIMAL = 100  # A.U.
 CALB2_TICKS = (120, 200, 1000)  # A.U.
@@ -80,13 +84,19 @@ BLOCK_POST_TRIAL = 5  # s
 LAST_BLOCK_LEN = 10 + BLOCK_POST_TRIAL  # s
 
 # Feature extraction related
-TEST_EVOKED_PERIOD = 2  # s
-TEST_STD_RATIO = 5  # 5 std pretty good
-RESPONSE_THRESHOLD = 0.01  # p
+EVOKED_PERIOD = 2  # s
 
 # common feature
 EVOKED_RESPONSE_FEATURE = "Evoked-Response"
 FOLD_CHANGE_ACC456_FEATURE = "Fold-Change from ACC456"
 CALB2_METRIC = "Calb2 Mean"
 
+
+# choice of embedding
+CHOSEN_ONE = {
+    "Calb2_SAT": {"n_cluster": 3, "labelling_id": 1, "embed_id": 0},
+    "Ai148_SAT": {"n_cluster": 3, "labelling_id": 4, "embed_id": 0},
+    "Ai148_PSE": {"n_cluster": 3, "labelling_id": 1, "embed_id": 4},
+    "Calb2_PSE": {"n_cluster": 3, "labelling_id": 1, "embed_id": 0},
+}
 

@@ -35,7 +35,7 @@ def basic_evoked_response_and_fold_change(feature_db: FeatureDataBase, baseline_
         func=lambda _single_cs: general_feature_interface(
             instance_list=_single_cs.trials, insert_name=EVOKED_RESPONSE_FEATURE,
             metric_func=element_feature_compute_trial_period_activity_peak,
-            func_criteria=OPTIONS_TIME_RANGE["trial evoked period"],
+            func_criteria={"start_t": 0, "end_t": EVOKED_PERIOD},
             instance_criteria=OPTIONS_TRIAL_GROUP["stimulus trial only"]
         ))
 
@@ -71,7 +71,7 @@ def trial_wise_response_probability_features(feature_db: FeatureDataBase) -> Lis
     feature_name_list = []
     for time_range_name, time_range_option in OPTIONS_TIME_RANGE.items():
         for trial_group_name, trial_group_option in OPTIONS_TRIAL_GROUP.items():
-            for std_ratio_name, std_ratio_option in OPTIONS_STD_RATIO.items():
+            for std_ratio_name, std_ratio_option in OPTIONS_RESPONSIVE_STD_RATIO.items():
                 tmp_feature_name = f"response prob || {time_range_name} || {trial_group_name} || {std_ratio_name}"
                 feature_db.compute_DayWiseFeature(
                     feature_name=tmp_feature_name,
@@ -92,7 +92,7 @@ def spont_block_wise_features(feature_db: FeatureDataBase) -> List[str]:
     feature_name_list = []
     for block_group_name, block_group_option in OPTIONS_SPONT_BLOCK_GROUP.items():
         for element_func_name, element_func_option in OPTIONS_ELEMENT_FEATURE_SPONT_BLOCK_OVERALL_STD_RELATED.items():
-            for std_ratio_name, std_ratio_option in OPTIONS_STD_RATIO.items():
+            for std_ratio_name, std_ratio_option in OPTIONS_EVENT_DETECTION_STD_RATIO.items():
                 tmp_feature_name = f"{element_func_name} || {block_group_name} || {std_ratio_name}"
                 feature_db.compute_DayWiseFeature(
                     feature_name=tmp_feature_name,
@@ -135,4 +135,19 @@ def feature_prepare(feature_db: FeatureDataBase, overwrite=False):
     print(f"\nPreparation complete!\n{len(total_feature_names)} features: {total_feature_names}")
     return total_feature_names
 
+
+def quick_access(exp_id: str, feature_db_name: str) -> Tuple[FeatureDataBase, List[str]]:
+    assert exp_id in EXP_LIST
+    single_exp = Experiment(exp_id=exp_id)
+    single_image = single_exp.image
+    single_feature_db = FeatureDataBase(feature_db_name, single_image)
+
+    if path.exists(SORTED_FEATURE_NAMES_JSON_PATH[exp_id]):
+        sorted_feature_names = json_load(SORTED_FEATURE_NAMES_JSON_PATH[exp_id])
+    else:
+        all_feature_names = feature_prepare(single_feature_db)
+        mitten_pvalues = single_feature_db.pvalue_ttest_ind_calb2(all_feature_names)
+        sorted_feature_names = list(mitten_pvalues.keys())
+        json_dump(SORTED_FEATURE_NAMES_JSON_PATH[exp_id], sorted_feature_names)
+    return single_feature_db, sorted_feature_names
 

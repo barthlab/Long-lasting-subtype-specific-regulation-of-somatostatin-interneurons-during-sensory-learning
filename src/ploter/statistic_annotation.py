@@ -58,25 +58,25 @@ def statistic_bar(ax: matplotlib.axes.Axes, x1: float, x2: float, y: float, p_va
             horizontalalignment='center', verticalalignment='bottom')
 
 
-def timeseries_ttest_every_frame(ax: matplotlib.axes.Axes, data_list: List[dict], expand: bool = False):
-    assert len(data_list) == 2
-    trace_set_1, trace_set_2 = data_list[0], data_list[1]
-    total_timeseries = [trace_set_1[sort_key]
-                        for sort_key in trace_set_1.keys()] + [trace_set_2[sort_key]
-                                                               for sort_key in trace_set_1.keys()]
-    _, _, (xs, interp_ts) = sync_timeseries(total_timeseries)
-    assert interp_ts.shape == (len(trace_set_1) + len(trace_set_2), len(xs))
-    significant_flags = np.full((len(xs),), fill_value=False, dtype=bool)
-    for frame_id in range(len(xs)):
-        value_1, value_2 = interp_ts[:len(trace_set_1), frame_id], interp_ts[len(trace_set_1):, frame_id]
-        if stats.ttest_rel(value_1, value_2).pvalue < SIGNIFICANT_P:
-            significant_flags[frame_id] = True
-    pooled_data = pool_boolean_array(significant_flags, xs=xs)
-    expand_ratio_low = DISPLAY_MIN_DF_F0_Ai148/DISPLAY_MIN_DF_F0_Calb2 if expand else 1
-    expand_ratio_high = DISPLAY_MAX_DF_F0_Ai148/DISPLAY_MAX_DF_F0_Calb2 if expand else 1
-    ax.imshow(pooled_data[np.newaxis, :], cmap=SIGNIFICANT_TRACE_COLORMAP, interpolation='nearest',
-              extent=(xs[0], xs[-1], expand_ratio_low*SIGNIFICANT_TRACE_Y_EXTENT[0],
-                      expand_ratio_high*SIGNIFICANT_TRACE_Y_EXTENT[1]), origin='lower', aspect='auto')
+# def timeseries_ttest_every_frame(ax: matplotlib.axes.Axes, data_list: List[dict], expand: bool = False):
+#     assert len(data_list) == 2
+#     trace_set_1, trace_set_2 = data_list[0], data_list[1]
+#     total_timeseries = [trace_set_1[sort_key]
+#                         for sort_key in trace_set_1.keys()] + [trace_set_2[sort_key]
+#                                                                for sort_key in trace_set_1.keys()]
+#     _, _, (xs, interp_ts) = sync_timeseries(total_timeseries)
+#     assert interp_ts.shape == (len(trace_set_1) + len(trace_set_2), len(xs))
+#     significant_flags = np.full((len(xs),), fill_value=False, dtype=bool)
+#     for frame_id in range(len(xs)):
+#         value_1, value_2 = interp_ts[:len(trace_set_1), frame_id], interp_ts[len(trace_set_1):, frame_id]
+#         if stats.ttest_rel(value_1, value_2).pvalue < SIGNIFICANT_P:
+#             significant_flags[frame_id] = True
+#     pooled_data = pool_boolean_array(significant_flags, xs=xs)
+#     expand_ratio_low = DISPLAY_MIN_DF_F0_Ai148/DISPLAY_MIN_DF_F0_Calb2 if expand else 1
+#     expand_ratio_high = DISPLAY_MAX_DF_F0_Ai148/DISPLAY_MAX_DF_F0_Calb2 if expand else 1
+#     ax.imshow(pooled_data[np.newaxis, :], cmap=SIGNIFICANT_TRACE_COLORMAP, interpolation='nearest',
+#               extent=(xs[0], xs[-1], expand_ratio_low*SIGNIFICANT_TRACE_Y_EXTENT[0],
+#                       expand_ratio_high*SIGNIFICANT_TRACE_Y_EXTENT[1]), origin='lower', aspect='auto')
 
 
 def paired_ttest_with_Bonferroni_correction_simple_version(ax: matplotlib.axes.Axes, data_dict: Dict[float, list]):

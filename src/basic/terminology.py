@@ -91,7 +91,9 @@ ADV_SAT: Dict[str, Tuple[DayType, ...]] = {
     "SAT12": tuple(SatDay(i) for i in range(6, 8)),
     "SAT45": tuple(SatDay(i) for i in range(9, 11)),
     "SAT56": tuple(SatDay(i) for i in range(10, 12)),
+    "SAT89": tuple(SatDay(i) for i in range(13, 15)),
     "SAT910": tuple(SatDay(i) for i in range(14, 16)),
+    "SAT8910": tuple(SatDay(i) for i in range(13, 16)),
 }
 ADV_SAT.update({SatDay(i).name: tuple((SatDay(i),)) for i in range(16)})
 
@@ -102,9 +104,12 @@ ADV_PSE: Dict[str, Tuple[DayType, ...]] = {
     "PSE456": tuple(PseDay(i) for i in range(9, 12)),
     "PSE789": tuple(PseDay(i) for i in range(12, 15)),
     "PSE12": tuple(PseDay(i) for i in range(6, 8)),
+    "PSE23": tuple(PseDay(i) for i in range(7, 9)),
     "PSE45": tuple(PseDay(i) for i in range(9, 11)),
     "PSE56": tuple(PseDay(i) for i in range(10, 12)),
+    "PSE89": tuple(PseDay(i) for i in range(13, 15)),
     "PSE910": tuple(PseDay(i) for i in range(14, 16)),
+    "PSE8910": tuple(PseDay(i) for i in range(13, 16)),
 }
 ADV_PSE.update({PseDay(i).name: tuple((PseDay(i),)) for i in range(16)})
 
@@ -144,6 +149,16 @@ class SessionUID:
     fov_id: int
     day_id: SatDay | PseDay
     session_in_day: int
+
+
+@dataclass(frozen=True, order=True)
+class EmbedUID:
+    n_cluster: int
+    labelling_id: int
+    embed_id: int
+
+    def in_short(self) -> str:
+        return f"c{self.n_cluster}_l{self.labelling_id}_e{self.embed_id}"
 
 
 class CellType(Enum):

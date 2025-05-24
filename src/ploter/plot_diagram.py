@@ -109,7 +109,7 @@ def plot_diagram_spont_blocks_event_detection(single_cs: CellSession, save_name:
 
     example_block = general_filter(single_cs.spont_blocks, block_type=BlockType.PostBlock)[0]  # type: SpontBlock
 
-    for std_cnt, std_value in enumerate([1, 2, 3, 5]):
+    for std_cnt, std_value in enumerate([1, 2, 5, 10]):
         std_offset = std_cnt*10
         ax.plot(example_block.df_f0.t_zeroed, example_block.df_f0.v+std_offset, color='black', lw=1, alpha=0.7)
         ax.axhline(y=std_offset + std_value*single_cs.overall_baseline_std, xmin=0.2, lw=0.5, color='red', ls='--')
@@ -122,7 +122,7 @@ def plot_diagram_spont_blocks_event_detection(single_cs: CellSession, save_name:
     #                                                   for std_option in OPTIONS_STD_RATIO.values()])
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_xlim(-28, None)
+    ax.set_xlim(-32, None)
     # ax.spines[['bottom', 'left', 'right', 'top']].set_visible(False)
 
     fig.set_size_inches(1.5, 1.5)
@@ -146,7 +146,7 @@ def plot_diagram_trial_periods(single_cs: CellSession, save_name: str):
         ax.text(-5, period_cnt*period_offset+1.7, f"{prefix}\nperiod", fontsize=8, ha='left', color='black')
 
     ax.set_xticks([-2, 0, 2, 4])
-    ax.tick_params(axis="x", direction="in", pad=-15)
+    ax.tick_params(axis="x", direction="in", pad=-10)
     ax.set_yticks([])
     ax.set_xlim(-5.5, None)
     ax.set_ylim(-2.7, 14)

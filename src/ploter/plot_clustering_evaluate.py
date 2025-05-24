@@ -117,13 +117,13 @@ def plot_fold_change_bars(
             oreo_bar(ax, list(tmp_data.values()), x_position=bar_id+group_id*bar_offset,
                      width=bar_width, color=group_colors[group_id])
             statistic_dict[bar_id+group_id*bar_offset] = tmp_data
-        paired_ttest_with_Bonferroni_correction(ax, statistic_dict, simple_flag=True)
+        paired_ttest_with_Bonferroni_correction(ax, statistic_dict, simple_flag=False)
     ax.set_ylim(0, 2.1)
     ax.set_yticks([0., 0.5, 1., 1.5, 2.])
     ax.spines[['right', 'top']].set_visible(False)
     ax.axvspan(0.75, len(bars_list) - 0.5, lw=0, alpha=0.4, zorder=0,
                color=OTHER_COLORS['SAT'] if feature_db.SAT_flag else OTHER_COLORS["PSE"], )
-    ax.set_ylabel(r'Peak Response (Norm.)')
+    ax.set_ylabel(r'Peak response (normalized)', fontsize=7)
     ax.set_xticks(np.arange(len(bars_list))+bar_offset*((n_group-1)/2), bars_list)
     ax.axhline(y=1, lw=1, color='black', alpha=0.4, ls='--')
     ax.tick_params(axis='x', which=u'both', length=0)

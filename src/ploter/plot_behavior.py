@@ -83,3 +83,5 @@ def plot_heatmap_licks(single_mice: BehaviorMice, save_name: str):
     plt.close(fig)
 
 
+
+def plot_performance(single_mice: BehaviorMice, save_name: str):
