@@ -16,9 +16,9 @@ plt.rcParams["font.family"] = "Arial"
 plt.rcParams['font.size'] = 8
 
 plt.rcParams.update({
-    'xtick.labelsize': 5,      # X-axis tick labels
-    'ytick.labelsize': 5,      # Y-axis tick labels
-    'axes.labelsize': 6,       # X and Y axis labels
+    'xtick.labelsize': 7,      # X-axis tick labels
+    'ytick.labelsize': 7,      # Y-axis tick labels
+    'axes.labelsize': 7,       # X and Y axis labels
     'axes.titlesize': 7,       # Plot title
     'legend.fontsize': 7,      # Legend font size
     'figure.titlesize': 8      # Figure title (suptitle)
@@ -116,7 +116,7 @@ NUM_SMOOTH_POINTS = 100
 
 
 # Statistical test
-STATISTICAL_FONTSIZE = 5
+STATISTICAL_FONTSIZE = 7
 SIGNIFICANT_P = 0.05
 SIGNIFICANT_P_EXTRA = 0.01
 SIGNIFICANT_ALPHA = 0.05

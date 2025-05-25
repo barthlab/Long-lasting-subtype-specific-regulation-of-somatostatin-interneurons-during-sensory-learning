@@ -33,6 +33,18 @@ if __name__ == "__main__":
     #     },
     #     save_name=path.join("9_behavior", f"{_exp}_all_mice_summary.png"))
 
+    col_days_refs = {
+        # "M047": [SatDay.ACC6, SatDay.ACC6, SatDay.SAT1, SatDay.SAT2],
+        "M017": [SatDay.ACC6, SatDay.ACC6, SatDay.SAT1, SatDay.SAT2, SatDay.SAT3, SatDay.SAT4],
+        "M028": [SatDay.ACC6, SatDay.ACC6, SatDay.SAT1, SatDay.SAT2, SatDay.SAT3, SatDay.SAT4],
+        "M023": [SatDay.ACC6, SatDay.SAT2, SatDay.SAT3, SatDay.SAT4, SatDay.SAT5, SatDay.SAT6],
+        "M104": [SatDay.ACC6, SatDay.SAT3, SatDay.SAT4, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7],
+        "M086": [SatDay.ACC6, SatDay.SAT3, SatDay.SAT4, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7],
+        "M032": [SatDay.ACC6, SatDay.SAT4, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7, SatDay.SAT8],
+        "M027": [SatDay.ACC6, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7, SatDay.SAT8, SatDay.SAT9],
+        "M031": [SatDay.ACC6, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7, SatDay.SAT8, SatDay.SAT9],
+    }
+
     xls = pd.ExcelFile(path.join(FINAL_CLUSTERING_RESULT_PATH, "Ai148_SAT_cluster_label.xlsx"), engine='openpyxl')
     df = pd.read_excel(xls, sheet_name="label")
     tmp_cells_uid = synthesize_cell_uid_list({_k: df[_k].tolist()
@@ -45,40 +57,46 @@ if __name__ == "__main__":
     mitten_behavior = BehaviorExperiment(exp_id=_exp)
     mitten_imaging = Experiment(exp_id=_exp)
 
-
     for single_cs in mitten_imaging.cell_sessions:
         single_cs.cluster_id = label_dict[single_cs.cell_uid]
 
     plot_behavior.plot_daily_bar_graph(
-        mitten_behavior, mitten_imaging,
-        img_groups=[{"cluster_id": 0}, {"cluster_id": 1}, {"cluster_id": 2}, ],
-        color_groups=[CLUSTER_COLORLIST[0], CLUSTER_COLORLIST[1], CLUSTER_COLORLIST[2], ],
-        col_days={
-            # "M047": [SatDay.ACC6, SatDay.ACC6, SatDay.SAT1, SatDay.SAT2],
-            "M017": [SatDay.ACC6, SatDay.ACC6, SatDay.SAT1, SatDay.SAT2, SatDay.SAT3, SatDay.SAT4],
-            "M028": [SatDay.ACC6, SatDay.ACC6, SatDay.SAT1, SatDay.SAT2, SatDay.SAT3, SatDay.SAT4],
-            "M023": [SatDay.ACC6, SatDay.SAT2, SatDay.SAT3, SatDay.SAT4, SatDay.SAT5, SatDay.SAT6],
-            "M104": [SatDay.ACC6, SatDay.SAT3, SatDay.SAT4, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7],
-            "M086": [SatDay.ACC6, SatDay.SAT3, SatDay.SAT4, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7],
-            "M032": [SatDay.ACC6, SatDay.SAT4, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7, SatDay.SAT8],
-            "M027": [SatDay.ACC6, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7, SatDay.SAT8, SatDay.SAT9],
-            "M031": [SatDay.ACC6, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7, SatDay.SAT8, SatDay.SAT9],
-        },
+        mitten_behavior.mice, mitten_imaging.mice,
+        img_groups=[{"cluster_id": 0}, {"cluster_id": 2}, {"cluster_id": 1}, ],
+        color_groups=[CLUSTER_COLORLIST[0], CLUSTER_COLORLIST[2], CLUSTER_COLORLIST[1], ],
+        col_days=col_days_refs,
         save_name=path.join("9_behavior", f"{_exp}_all_mice_summary_bars.png"))
     plot_behavior.plot_daily_summary(
-        mitten_behavior, mitten_imaging,
-        img_groups=[{"cluster_id": 0}, {"cluster_id": 1}, {"cluster_id": 2}, ],
-        color_groups=[CLUSTER_COLORLIST[0], CLUSTER_COLORLIST[1], CLUSTER_COLORLIST[2], ],
-        col_days={
-            # "M047": [SatDay.ACC6, SatDay.ACC6, SatDay.SAT1, SatDay.SAT2],
-            "M017": [SatDay.ACC6, SatDay.ACC6, SatDay.SAT1, SatDay.SAT2, SatDay.SAT3, SatDay.SAT4],
-            "M028": [SatDay.ACC6, SatDay.ACC6, SatDay.SAT1, SatDay.SAT2, SatDay.SAT3, SatDay.SAT4],
-            "M023": [SatDay.ACC6, SatDay.SAT2, SatDay.SAT3, SatDay.SAT4, SatDay.SAT5, SatDay.SAT6],
-            "M104": [SatDay.ACC6, SatDay.SAT3, SatDay.SAT4, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7],
-            "M086": [SatDay.ACC6, SatDay.SAT3, SatDay.SAT4, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7],
-            "M032": [SatDay.ACC6, SatDay.SAT4, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7, SatDay.SAT8],
-            "M027": [SatDay.ACC6, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7, SatDay.SAT8, SatDay.SAT9],
-            "M031": [SatDay.ACC6, SatDay.SAT5, SatDay.SAT6, SatDay.SAT7, SatDay.SAT8, SatDay.SAT9],
-        },
+        mitten_behavior.mice, mitten_imaging.mice,
+        img_groups=[{"cluster_id": 0}, {"cluster_id": 2}, {"cluster_id": 1}, ],
+        color_groups=[CLUSTER_COLORLIST[0], CLUSTER_COLORLIST[2], CLUSTER_COLORLIST[1], ],
+        col_days=col_days_refs,
         save_name=path.join("9_behavior", f"{_exp}_all_mice_summary.png"))
+
+    plot_behavior.plot_daily_bar_graph(
+        mitten_behavior.mice, mitten_imaging.mice,
+        img_groups=[{}, ],
+        color_groups=['black', ],
+        col_days=col_days_refs,
+        save_name=path.join("9_behavior", f"{_exp}_all_mice_together_summary_bars.png"))
+    plot_behavior.plot_daily_summary(
+        mitten_behavior.mice, mitten_imaging.mice,
+        img_groups=[{}, ],
+        color_groups=['black', ],
+        col_days=col_days_refs,
+        save_name=path.join("9_behavior", f"{_exp}_all_mice_together_summary.png"))
+
+    # for mitten_behavior_mice in mitten_behavior.mice:
+    #     plot_behavior.plot_daily_bar_graph(
+    #         [mitten_behavior_mice], [mitten_imaging.get_mice(mitten_behavior_mice.mice_uid)],
+    #         img_groups=[{}, ],
+    #         color_groups=['black', ],
+    #         col_days=col_days_refs,
+    #         save_name=path.join("9_behavior", f"{_exp}_{mitten_behavior_mice.mice_uid.in_short()}_summary_bars.png"))
+    #     plot_behavior.plot_daily_summary(
+    #         [mitten_behavior_mice], [mitten_imaging.get_mice(mitten_behavior_mice.mice_uid)],
+    #         img_groups=[{}, ],
+    #         color_groups=['black', ],
+    #         col_days=col_days_refs,
+    #         save_name=path.join("9_behavior", f"{_exp}_{mitten_behavior_mice.mice_uid.in_short()}_summary.png"))
     exit()

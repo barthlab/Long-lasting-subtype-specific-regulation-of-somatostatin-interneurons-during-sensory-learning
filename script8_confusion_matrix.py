@@ -1,3 +1,5 @@
+import os.path
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix, f1_score
@@ -34,4 +36,4 @@ sns.heatmap(cm_data, annot=True, fmt='d', cmap='Blues', annot_kws={"size": 20},
 plt.xlabel('predicted label')
 plt.ylabel('molecular label')
 plt.title(f'Confusion Matrix\nF1 Score (Calb2 positive class): {f1:.3f}')
-plt.savefig("confusion_matrix.png", dpi=300)
+plt.savefig(os.path.join("figures", "8_justification", "confusion_matrix.png"), dpi=300)

@@ -100,7 +100,7 @@ def plot_single_day_performance(ax: matplotlib.pyplot.Axes, daily_trials: List[B
         # tmp_ax.scatter(trial_times, trial_lick_freq, alpha=0.3, s=5,
         #             color=BEHAVIOR_TRIAL_TYPE2COLOR[trial_type])
         ax.bar(bin_time, bin_lick_freq, width=BEHAVIOR_BIN_SIZE_HOUR * 0.25, alpha=0.8,
-               yerr=bin_var, capsize=1, error_kw={"capthick": 0.5, "elinewidth": 0.5,},
+               yerr=bin_var, capsize=1, error_kw={"capthick": 0.4, "elinewidth": 0.4,},
                color=BEHAVIOR_TRIAL_TYPE2COLOR[trial_type])
     ax.plot([0, 24], [0, 0], lw=1, color='gray', alpha=0.8)
     ax.spines[['right', 'top']].set_visible(False)
@@ -112,10 +112,10 @@ def plot_single_day_licking_raster(ax: matplotlib.pyplot.Axes, daily_trials: Lis
     lick_times = []
     for single_trial in daily_trials:
         lick_times += list(single_trial.lick_times)
-
-    bin_time, bin_lick_freq = bin_count(lick_times, bin_width=BEHAVIOR_BIN_SIZE_TRIAL)
-    bin_lick_freq = bin_lick_freq/(n_trials*BEHAVIOR_BIN_SIZE_TRIAL)
-    ax.plot(bin_time, bin_lick_freq, lw=1, alpha=0.8, color=color)
+    if len(lick_times) > 0:
+        bin_time, bin_lick_freq = bin_count(lick_times, bin_width=BEHAVIOR_BIN_SIZE_TRIAL)
+        bin_lick_freq = bin_lick_freq/(n_trials*BEHAVIOR_BIN_SIZE_TRIAL)
+        ax.plot(bin_time, bin_lick_freq, lw=1, alpha=0.8, color=color)
 
     ax.spines[['right', 'top']].set_visible(False)
     ax.tick_params(axis='both')
@@ -142,7 +142,7 @@ def plot_daily_performance(single_mice: BehaviorMice, save_name: str):
 
 
 def plot_daily_summary(
-        beh_exp: BehaviorExperiment, img_exp: Experiment,
+        beh_mice_list: List[BehaviorMice], img_mice_list: List[Mice],
         img_groups: List[dict], color_groups: List[str], col_days: Dict[str, List[DayType]], save_name: str
 ):
     n_group, n_col = len(img_groups), len(col_days[list(col_days.keys())[0]])
@@ -153,8 +153,8 @@ def plot_daily_summary(
         for row_id, select_criteria in enumerate(img_groups):
 
             all_trials = chain.from_iterable([
-                single_cs.trials for beh_mice in beh_exp.mice for single_cs in general_filter(
-                    img_exp.get_mice(beh_mice.mice_uid).cell_sessions,
+                single_cs.trials for beh_mice in beh_mice_list for single_cs in general_filter(
+                    general_filter(img_mice_list, mice_uid = beh_mice.mice_uid)[0].cell_sessions,
                     day_id=col_days[beh_mice.mice_id][col_id], **select_criteria)])
             selected_trials = general_filter(all_trials, trial_type=EventType.Puff)
             if len(selected_trials) == 0:
@@ -168,18 +168,19 @@ def plot_daily_summary(
 
             tmp_ax.spines[['right', 'top']].set_visible(False)
             tmp_ax.tick_params(axis='both')
-            if col_id == 0:
+            if col_id == 0 and row_id == int((n_group-1)/2):
                 tmp_ax.set_ylabel(f"Evoked Response ({DF_F0_STR})")
             tmp_ax.set_xlabel("Time (s)")
             tmp_ax.set_xlim(-2, 4)
             tmp_ax.axvspan(0, 0.5, lw=0, color=OTHER_COLORS['puff'], alpha=0.4)
 
         daily_trials = list(chain.from_iterable([beh_mice.split_trials_by_days().get(
-            col_days[beh_mice.mice_id][col_id].value+1, []) for beh_mice in beh_exp.mice]))
+            col_days[beh_mice.mice_id][col_id].value+1, []) for beh_mice in beh_mice_list]))
         plot_single_day_performance(axs[n_group+1, col_id], daily_trials)
         if col_id == 0:
-            axs[n_group+1, col_id].set_ylabel(f"Anticipatory Licking Freq (Hz)")
+            axs[n_group+1, col_id].set_ylabel(f"Anticipatory Licking (Hz)")
         axs[n_group+1, col_id].set_xlabel(f"Hour at day")
+        axs[n_group+1, col_id].set_xticks([0, 12, 24])
 
         plot_single_day_licking_raster(axs[n_group, col_id],
                                        general_filter(daily_trials, trial_type=BehaviorTrialType.Go),
@@ -191,15 +192,15 @@ def plot_daily_summary(
             axs[n_group, col_id].set_ylabel(f"Licking Freq (Hz)")
         axs[n_group, col_id].set_xlim(-2, 4)
         axs[n_group, col_id].axvspan(0, 0.5, lw=0, color=OTHER_COLORS['puff'], alpha=0.4)
-        axs[n_group, col_id].axvline(x=1, lw=1, color=OTHER_COLORS['water'], alpha=0.4, ls='--')
+        axs[n_group, col_id].axvline(x=1, lw=1, color=OTHER_COLORS['water'], alpha=0.7, ls='--')
 
-    fig.set_size_inches(1.3*n_col, 0.9*(n_group+3))
+    fig.set_size_inches(0.85*n_col, 0.8*(n_group+3))
     fig.tight_layout()
     quick_save(fig, save_name)
 
 
 def plot_daily_bar_graph(
-        beh_exp: BehaviorExperiment, img_exp: Experiment,
+        beh_mice_list: List[BehaviorMice], img_mice_list: List[Mice],
         img_groups: List[dict], color_groups: List[str], col_days: Dict[str, List[DayType]], save_name: str
 ):
     n_group, n_days = len(img_groups), len(col_days[list(col_days.keys())[0]])
@@ -214,8 +215,8 @@ def plot_daily_bar_graph(
         for row_id, select_criteria in enumerate(img_groups):
             cell_peaks[row_id][col_id] = defaultdict(list)
             all_trials = chain.from_iterable([
-                single_cs.trials for beh_mice in beh_exp.mice for single_cs in general_filter(
-                    img_exp.get_mice(beh_mice.mice_uid).cell_sessions,
+                single_cs.trials for beh_mice in beh_mice_list for single_cs in general_filter(
+                    general_filter(img_mice_list, mice_uid=beh_mice.mice_uid)[0].cell_sessions,
                     day_id=col_days[beh_mice.mice_id][col_id], **select_criteria)])
             selected_trials = general_filter(all_trials, trial_type=EventType.Puff)
             if len(selected_trials) == 0:
@@ -231,7 +232,7 @@ def plot_daily_bar_graph(
         beh_trial_list[col_id] = defaultdict(list)
         anti_licks_pairs[col_id] = {}
         daily_trials = list(chain.from_iterable([beh_mice.split_trials_by_days().get(
-            col_days[beh_mice.mice_id][col_id].value+1, []) for beh_mice in beh_exp.mice]))
+            col_days[beh_mice.mice_id][col_id].value+1, []) for beh_mice in beh_mice_list]))
 
         for single_trial in daily_trials:
             beh_trial_list[col_id][single_trial.mice_uid].append(single_trial)
@@ -260,7 +261,7 @@ def plot_daily_bar_graph(
                 2: cell_peaks[group_id][2],
                 4: cell_peaks[group_id][4],
                 5: cell_peaks[group_id][5],
-            }, simple_flag=True)
+            }, simple_flag=False)
         # Collect all unique cell UIDs across all days for this group
         all_cell_uids = set()
         for col_id in range(n_days):
@@ -294,9 +295,12 @@ def plot_daily_bar_graph(
                     cell_trajectories[cell_uid].append((col_id, np.nan))
 
         # Plot error bars
-        ax.errorbar(x_values, y_values, yerr=y_errors, fmt='o-',
-                    color=color_groups[group_id], lw=2, markersize=4, capsize=4)
-
+        ax.errorbar(x_values[0], y_values[0], yerr=y_errors[0], fmt='o-',
+                    color=color_groups[group_id], lw=1, markersize=3, capsize=1, elinewidth=1)
+        ax.errorbar(x_values[1:], y_values[1:], yerr=y_errors[1:], fmt='o-',
+                    color=color_groups[group_id], lw=1, markersize=3, capsize=1, elinewidth=1)
+        ax.axvspan(0.625, n_days - 0.5, lw=0, alpha=0.4, zorder=0,
+                   color=OTHER_COLORS["SAT"], )
         # Plot individual cell trajectories
         for cell_uid, trajectory in cell_trajectories.items():
             x_traj = [point[0] for point in trajectory if not np.isnan(point[1])]
@@ -305,7 +309,8 @@ def plot_daily_bar_graph(
                 # ax.plot(x_traj, y_traj, alpha=0.1, linewidth=0.5, color=color_groups[group_id], ls='--')
                 pass
         # ax.set_xlabel('Day relative to')
-        ax.set_ylabel(f'Evoked Response (log {DF_F0_STR})')
+        # if group_id == int((n_group-1)/2):
+        #     ax.set_ylabel(f'Evoked Response ({DF_F0_STR})')
         # ax.set_yscale('log')
         ax.spines[['right', 'top']].set_visible(False)
 
@@ -351,10 +356,10 @@ def plot_daily_bar_graph(
             for mice_uid in all_mice_uids:
                 if mice_uid in anti_licks_pairs[col_id]:
                     mice_go_trajectories[mice_uid].append((col_id, anti_licks_pairs[col_id][mice_uid][0]))
-                    mice_nogo_trajectories[mice_uid].append((col_id + 0.25, anti_licks_pairs[col_id][mice_uid][1]))
+                    mice_nogo_trajectories[mice_uid].append((col_id + 0.45, anti_licks_pairs[col_id][mice_uid][1]))
                 else:
                     mice_go_trajectories[mice_uid].append((col_id, np.nan))
-                    mice_nogo_trajectories[mice_uid].append((col_id + 0.25, np.nan))
+                    mice_nogo_trajectories[mice_uid].append((col_id + 0.45, np.nan))
         else:
             go_values.append(np.nan)
             go_errors.append(0)
@@ -362,45 +367,43 @@ def plot_daily_bar_graph(
             nogo_errors.append(0)
             for mice_uid in all_mice_uids:
                 mice_go_trajectories[mice_uid].append((col_id, np.nan))
-                mice_nogo_trajectories[mice_uid].append((col_id + 0.25, np.nan))
+                mice_nogo_trajectories[mice_uid].append((col_id + 0.45, np.nan))
 
-    # Plot Go trials (at col_id)
     x_go = list(range(n_days))
-    ax.errorbar(x_go, go_values, yerr=go_errors, fmt='o-',
-                color=BEHAVIOR_TRIAL_TYPE2COLOR[BehaviorTrialType.Go],
-                linewidth=2, markersize=4, capsize=5, label='Go')
+    x_nogo = [x + 0.45 for x in range(n_days)]
+    for day_id in range(n_days):
+        ax.errorbar(x_go[day_id], go_values[day_id], yerr=go_errors[day_id], fmt='o-',
+                    color=BEHAVIOR_TRIAL_TYPE2COLOR[BehaviorTrialType.Go],
+                    markersize=3, capsize=1, elinewidth=1, label='Go')
+        ax.errorbar(x_nogo[day_id], nogo_values[day_id], yerr=nogo_errors[day_id], fmt='o-',
+                    color=BEHAVIOR_TRIAL_TYPE2COLOR[BehaviorTrialType.NoGo],
+                    markersize=3, capsize=1, elinewidth=1, label='NoGo')
+        ax.plot([x_go[day_id], x_nogo[day_id]], [go_values[day_id], nogo_values[day_id]],
+                color='black', lw=1, alpha=0.8)
 
-    # Plot NoGo trials (at col_id + 0.25)
-    x_nogo = [x + 0.25 for x in range(n_days)]
-    ax.errorbar(x_nogo, nogo_values, yerr=nogo_errors, fmt='s-',
-                color=BEHAVIOR_TRIAL_TYPE2COLOR[BehaviorTrialType.NoGo],
-                linewidth=2, markersize=4, capsize=5, label='NoGo')
+    ax.axvspan(0.625, n_days - 0.5, lw=0, alpha=0.4, zorder=0,
+               color=OTHER_COLORS["SAT"], )
 
     # Plot individual mice trajectories
     for mice_uid in all_mice_uids:
-        # Go trajectories
         go_traj = mice_go_trajectories[mice_uid]
         x_go_traj = [point[0] for point in go_traj if not np.isnan(point[1])]
         y_go_traj = [point[1] for point in go_traj if not np.isnan(point[1])]
-        if len(x_go_traj) > 1:
-            ax.plot(x_go_traj, y_go_traj, alpha=0.3, linewidth=0.5,
-                    color=BEHAVIOR_TRIAL_TYPE2COLOR[BehaviorTrialType.Go], ls='--')
-
-        # NoGo trajectories
         nogo_traj = mice_nogo_trajectories[mice_uid]
         x_nogo_traj = [point[0] for point in nogo_traj if not np.isnan(point[1])]
         y_nogo_traj = [point[1] for point in nogo_traj if not np.isnan(point[1])]
-        if len(x_nogo_traj) > 1:
-            ax.plot(x_nogo_traj, y_nogo_traj, alpha=0.3, linewidth=0.5,
-                    color=BEHAVIOR_TRIAL_TYPE2COLOR[BehaviorTrialType.NoGo], ls='--')
+
+        for day_id in range(n_days):
+            ax.plot([x_go_traj[day_id], x_nogo_traj[day_id]], [y_go_traj[day_id], y_nogo_traj[day_id]],
+                    color='black', lw=0.5, alpha=0.3, ls='--')
 
     # ax.set_xlabel('Day')
-    ax.set_ylabel('Anticipatory Licking Freq (Hz)')
+    ax.set_ylabel('Anticipatory Licking (Hz)')
     ax.spines[['right', 'top']].set_visible(False)
     ax.set_xticks(list(range(n_days)), ["ACC6", -2, -1, 0, 1, 2])
     # ax.legend()
     # ax.grid(True, alpha=0.3)
 
-    fig.set_size_inches(0.5*n_days, 1.5*(n_group+1))
+    fig.set_size_inches(0.32*n_days, 1.2*(n_group+1))
     fig.tight_layout()
     quick_save(fig, save_name)
