@@ -27,9 +27,12 @@ The folder structure should look like this:
 │   │   ├── Ai148_SAT
 │   │   ├── Calb2_SAT
 ├── figures
-├── scripts
-│   ├── main.py
+├── src
+│   ├── data_manager.py
 │   ├── ...
+├── script1_overview.py
+├── script2_...
+├── ...
 
 ```
 
