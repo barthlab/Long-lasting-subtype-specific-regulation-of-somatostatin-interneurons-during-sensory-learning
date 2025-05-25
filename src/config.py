@@ -20,6 +20,7 @@ BEHAVIOR_DATA_PATH = "data/Behavior"
 FEATURE_DATA_PATH = "data/Feature"
 FEATURE_EXTRACTED_PATH = "data/Extracted Feature"
 BEST_CLUSTERING_PATH = "data/Best Clustering"
+FINAL_CLUSTERING_RESULT_PATH = "data/Clustering Result"
 FIGURE_PATH = "figures"
 SORTED_FEATURE_NAMES_JSON_PATH = {
     "Calb2_SAT": path.join(FEATURE_EXTRACTED_PATH, "sat_sorted_feature_names.json"),

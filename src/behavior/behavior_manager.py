@@ -31,16 +31,30 @@ class BehaviorTrial:
         self.lick_times = self.lick_times[~np.isnan(self.lick_times)]
 
     @cached_property
+    def anticipatory_licking(self) -> float:
+        return (np.sum((self.lick_times >= ANTICIPATORY_LICKING_RANGE[0]) &
+                       (self.lick_times <= ANTICIPATORY_LICKING_RANGE[1])) /
+                (ANTICIPATORY_LICKING_RANGE[1] - ANTICIPATORY_LICKING_RANGE[0]))
+
+    @cached_property
     def elapsed_time(self) -> float:
         return (self.trial_start - self.exp_start + time2yesterday(self.exp_start)).total_seconds()
 
     @cached_property
     def elapsed_hour(self) -> float:
-        return (self.trial_start - self.exp_start + time2yesterday(self.exp_start)).total_seconds()/3600
+        return (self.trial_start - self.exp_start + time2yesterday(self.exp_start)).total_seconds() / 3600
 
     @cached_property
     def elapsed_day(self) -> float:
-        return (self.trial_start - self.exp_start + time2yesterday(self.exp_start)).total_seconds()/(24*3600)
+        return (self.trial_start - self.exp_start + time2yesterday(self.exp_start)).total_seconds() / (24 * 3600)
+
+    @cached_property
+    def daily_hour(self) -> float:
+        return self.elapsed_hour - self.day_idx * 24
+
+    @cached_property
+    def daily_day(self) -> float:
+        return self.elapsed_day - self.day_idx
 
     @cached_property
     def num_licks(self) -> int:
@@ -49,6 +63,20 @@ class BehaviorTrial:
     @cached_property
     def day_idx(self) -> int:
         return int(self.elapsed_time / (24 * 3600))
+
+    @cached_property
+    def mice_uid(self) -> MiceUID:
+        return MiceUID(exp_id=self.exp_id, mice_id=self.mice_id)
+
+
+def calculate_last_percent_anticipatory_licking(trial_list: List[BehaviorTrial], p: float = 0.2) -> float:
+    n_trials_to_extract = int(len(trial_list) * p)
+    if n_trials_to_extract <= 0:
+        return np.nan
+    else:
+        sorted_trial_list = list(sorted(trial_list, key=lambda x: x.elapsed_time))
+        return nan_mean([single_trial.anticipatory_licking
+                         for single_trial in sorted_trial_list[-n_trials_to_extract:]])
 
 
 @dataclass
@@ -79,7 +107,7 @@ class BehaviorMice:
             file_start_dt = parser_start_time_from_filename(file_path)
             df_part = pd.read_csv(file_path, header=None, names=TXT_FILE_COL)
             if i == 0:
-                self.start_time_exp = file_start_dt if self.mice_id not in MISALIGNED_MICE_RECORDING_START else\
+                self.start_time_exp = file_start_dt if self.mice_id not in MISALIGNED_MICE_RECORDING_START else \
                     MISALIGNED_MICE_RECORDING_START[self.mice_id]
                 first_file_start_dt = file_start_dt
             else:
@@ -112,7 +140,7 @@ class BehaviorMice:
         # df_proc["TriaEndFlag"] = is_zero & next_is_nonzero
         df_proc["TrialID"] = df_proc["TriaStartFlag"].cumsum()
 
-        df_proc["RandomDelayS"] = (df_proc["RandDelayMS"].where(df_proc["TriaStartFlag"]).ffill()/1000.)
+        df_proc["RandomDelayS"] = (df_proc["RandDelayMS"].where(df_proc["TriaStartFlag"]).ffill() / 1000.)
         df_proc["TrialOnsetAbsTime"] = df_proc["AbsTime"].where(df_proc["TriaOnsetFlag"])
         df_proc["TrialOnsetAbsTime_fill"] = df_proc.groupby('TrialID')['TrialOnsetAbsTime'].transform('first')
 
@@ -162,6 +190,13 @@ class BehaviorMice:
     def mice_uid(self) -> MiceUID:
         return MiceUID(exp_id=self.exp_id, mice_id=self.mice_id)
 
+    def split_trials_by_days(self) -> Dict[int, List[BehaviorTrial]]:
+        trials_by_day = defaultdict(list)
+        for single_trial in self.trials:
+            trials_by_day[single_trial.day_idx].append(single_trial)
+        sorted_day_indices = sorted(list(trials_by_day.keys()))
+        return {sorted_day_index: trials_by_day[sorted_day_index] for sorted_day_index in sorted_day_indices}
+
 
 @dataclass
 class BehaviorExperiment:
@@ -169,7 +204,7 @@ class BehaviorExperiment:
     mice: List[BehaviorMice] = field(init=False, repr=False)
 
     def __post_init__(self):
-        assert  self.exp_id in EXP_LIST
+        assert self.exp_id in EXP_LIST
 
         self.mice = []
         for mice_name in os.listdir(self.data_path):
@@ -185,5 +220,3 @@ class BehaviorExperiment:
     @cached_property
     def data_path(self) -> str:
         return path.join(ROOT_PATH, BEHAVIOR_DATA_PATH, self.exp_id)
-
-

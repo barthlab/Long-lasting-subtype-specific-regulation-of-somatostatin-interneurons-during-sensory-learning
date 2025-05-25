@@ -622,6 +622,18 @@ class Mice:
     def str_uid(self) -> str:
         return f"{self.exp_id}_{self.mice_id}"
 
+    @cached_property
+    def mice_uid(self) -> MiceUID:
+        return MiceUID(exp_id=self.exp_id, mice_id=self.mice_id)
+
+    @cached_property
+    def SAT_flag(self) -> bool:
+        return EXP2DAY[self.exp_id] is SatDay
+
+    @cached_property
+    def days_ref(self) -> Dict[str, Tuple[DayType, ...]]:
+        return ADV_SAT if self.SAT_flag else ADV_PSE
+
 
 @dataclass
 class Experiment:
@@ -655,4 +667,11 @@ class Experiment:
     def image(self) -> Image:
         return Image(exp_id=self.exp_id, dataset=self.cell_sessions)
 
+    def get_mice(self, mice_uid: MiceUID) -> Mice:
+        for single_mice in self.mice:
+            if single_mice.mice_uid == mice_uid:
+                return single_mice
+        print(mice_uid)
+        print([single_mice.mice_uid for single_mice in self.mice])
+        raise FileNotFoundError
 

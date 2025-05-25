@@ -75,3 +75,37 @@ def set_size(w, h, fig):
     figh = float(h) / (t - b)
     fig.set_size_inches(figw, figh)
 
+
+def bin_average(times: np.ndarray | List, values: np.ndarray | List, bin_width: float, overlap=0.5):
+    times = np.array(times)
+    values = np.array(values)
+    sort_idx = np.argsort(times)
+    times = times[sort_idx]
+    values = values[sort_idx]
+
+    step = bin_width * (1 - overlap)
+    centers = np.arange(times.min() + bin_width / 2, times.max() - bin_width / 2, step)
+
+    bin_times, bin_avgs, bin_vars = [], [], []
+    for c in centers:
+        mask = (times >= c - bin_width / 2) & (times <= c + bin_width / 2)
+        if np.any(mask):
+            bin_times.append(c)
+            bin_avgs.append(nan_mean(values[mask]))
+            bin_vars.append(nan_sem(values[mask]))
+    return np.array(bin_times), np.array(bin_avgs), np.array(bin_vars)
+
+
+def bin_count(times: np.ndarray | List, bin_width: float, overlap=0.5):
+    times = np.array(sorted(times))
+
+    step = bin_width * (1 - overlap)
+    centers = np.arange(times.min() + bin_width / 2, times.max() - bin_width / 2, step)
+
+    bin_times, bin_avgs = [], []
+    for c in centers:
+        mask = (times >= c - bin_width / 2) & (times <= c + bin_width / 2)
+        bin_times.append(c)
+        bin_avgs.append(np.sum(mask))
+    return np.array(bin_times), np.array(bin_avgs)
+

@@ -33,3 +33,4 @@ def time2yesterday(now_time: datetime):
     time_to_midnight = now_time - midnight
     return time_to_midnight
 
+

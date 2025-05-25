@@ -15,6 +15,16 @@ from src.config import *
 plt.rcParams["font.family"] = "Arial"
 plt.rcParams['font.size'] = 8
 
+plt.rcParams.update({
+    'xtick.labelsize': 5,      # X-axis tick labels
+    'ytick.labelsize': 5,      # Y-axis tick labels
+    'axes.labelsize': 6,       # X and Y axis labels
+    'axes.titlesize': 7,       # Plot title
+    'legend.fontsize': 7,      # Legend font size
+    'figure.titlesize': 8      # Figure title (suptitle)
+})
+
+
 # color setting
 EVENT2COLOR = {
     EventType.Puff: "Green",
@@ -24,6 +34,8 @@ EVENT2COLOR = {
     BlockType.PostBlock: "blue"
 }
 OTHER_COLORS = {
+    "water": "lightblue",
+    "nowater": "gray",
     "puff": "gray",
     "annotate": 'gray',
     "SAT": "lightskyblue",

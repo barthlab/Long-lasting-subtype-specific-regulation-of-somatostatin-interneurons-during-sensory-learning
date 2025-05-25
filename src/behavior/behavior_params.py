@@ -17,12 +17,9 @@ LICK_STATUS_CODE = 2
 # plotting config
 D_TIME = 0.02  # s
 D_DAY = 0.05  # day
-BEHAVIOR_RANGE = (-1, 4)  # s
+BEHAVIOR_RANGE = (-3, 5)  # s
 DAY_TEXT_SIZE = 5
-
-# lick cmap
-GRAY3 = ["#000000", "#969696", "#ffffff"]
-BINARY = ['white', 'black']
+ANTICIPATORY_LICKING_RANGE = (0.7, 1)
 
 
 class BehaviorTrialType(Enum):
@@ -30,6 +27,23 @@ class BehaviorTrialType(Enum):
     NoGo = 0
 
 
+# lick cmap
+GRAY3 = ["#000000", "#969696", "#ffffff"]
+BINARY = ['white', 'black']
+BEHAVIOR_TRIAL_TYPE2COLOR = {
+    BehaviorTrialType.Go: "green",
+    BehaviorTrialType.NoGo: "red",
+}
+
+
 MISALIGNED_MICE_RECORDING_START = {
     "M031": datetime(2021, 11, 9, 12, 0, 0)
 }
+
+
+# plotting related
+BEHAVIOR_BIN_SIZE_DAY = 0.1
+BEHAVIOR_BIN_SIZE_HOUR = 2
+BEHAVIOR_BIN_SIZE_TRIAL = 0.1
+
+
