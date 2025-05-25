@@ -14,14 +14,25 @@ def previous_interp(x_new, xp, fp):
     return f_previous(x_new)
 
 
-def sync_timeseries(list_timeseries: List[TimeSeries], scale_factor: float = 2) \
+def nearest_interp(x_new, xp, fp):
+    f_nearest = interp1d(xp, fp, kind='nearest', bounds_error=False, fill_value="extrapolate")
+    return f_nearest(x_new)
+
+
+def sync_timeseries(list_timeseries: List[TimeSeries], scale_factor: float = 2, way: str = "previous") \
         -> Tuple[TimeSeries, TimeSeries, Tuple[np.ndarray, np.ndarray]]:
+    if way == "previous":
+        interp_func = previous_interp
+    elif way == "nearest":
+        interp_func = nearest_interp
+    else:
+        raise NotImplementedError
     list_times = [single_ts.t_aligned for single_ts in list_timeseries if single_ts is not None]
     list_values = [single_ts.v for single_ts in list_timeseries if single_ts is not None]
     max_length = np.max([len(x) for x in list_times])
     min_time, max_time = np.max([x[0] for x in list_times]), np.min([x[-1] for x in list_times])
     xs = np.linspace(min_time, max_time, int(max_length * scale_factor))
-    interpolated_values = np.stack([previous_interp(xs, tmp_time, tmp_value)
+    interpolated_values = np.stack([interp_func(xs, tmp_time, tmp_value)
                                     for tmp_time, tmp_value in zip(list_times, list_values)], axis=0)
     mean_value = TimeSeries(v=np.mean(interpolated_values, axis=0), t=xs, origin_t=0)
     sem_value = TimeSeries(v=np.std(interpolated_values, axis=0) / np.sqrt(len(xs)), t=xs, origin_t=0)
