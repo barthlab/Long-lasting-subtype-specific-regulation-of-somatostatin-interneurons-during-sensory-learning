@@ -114,11 +114,13 @@ def plot_fold_change_bars(
             tmp_fold_change = feature_db.get(feature_name=FOLD_CHANGE_ACC456_FEATURE, day_postfix=bar_name)
 
             tmp_data = {cell_uid: tmp_fold_change.by_cells[cell_uid] for cell_uid in cells_uid}
+            if DEBUG_FLAG:
+                print(group_name, bar_name, nan_mean(list(tmp_data.values())), nan_sem(list(tmp_data.values())))
             oreo_bar(ax, list(tmp_data.values()), x_position=bar_id+group_id*bar_offset,
                      width=bar_width, color=group_colors[group_id])
             statistic_dict[bar_id+group_id*bar_offset] = tmp_data
         paired_ttest_with_Bonferroni_correction(ax, statistic_dict, simple_flag=False)
-    ax.set_ylim(0, 2.1)
+    ax.set_ylim(0, 2.4)
     ax.set_yticks([0., 0.5, 1., 1.5, 2.])
     ax.spines[['right', 'top']].set_visible(False)
     ax.axvspan(0.75, len(bars_list) - 0.5, lw=0, alpha=0.4, zorder=0,

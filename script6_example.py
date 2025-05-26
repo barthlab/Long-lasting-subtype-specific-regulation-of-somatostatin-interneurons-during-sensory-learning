@@ -71,7 +71,8 @@ if __name__ == "__main__":
     all_feature_names = json_load(SORTED_FEATURE_NAMES_JSON_PATH["Calb2_SAT"])
     top30_mitten_features = all_feature_names[:30]
     print(len(top30_mitten_features), top30_mitten_features)
-    for exp_id in ("Calb2_SAT", "Ai148_SAT",):
+    # for exp_id in ("Calb2_SAT", "Ai148_SAT",):
+    for exp_id in ("Ai148_PSE", "Calb2_PSE",):
         mitten = Experiment(exp_id=exp_id)
         mitten_data = mitten.image
         mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
@@ -81,6 +82,8 @@ if __name__ == "__main__":
         mitten_representative = load_representative_clustering(mitten_vector)
 
         selected_embeddings = general_select(mitten_representative, **CHOSEN_ONE[exp_id])
+        for mitten_representative_embedding in selected_embeddings.values():
+            reassign_label_for_visualization(mitten_representative_embedding, mitten_feature)
         _every_fov(mitten, mitten_feature, selected_embeddings[EmbedUID(**CHOSEN_ONE[exp_id])])
         _representative_feature(mitten_feature, selected_embeddings[EmbedUID(**CHOSEN_ONE[exp_id])])
 

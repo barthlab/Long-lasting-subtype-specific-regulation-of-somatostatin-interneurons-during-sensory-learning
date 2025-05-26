@@ -116,7 +116,7 @@ NUM_SMOOTH_POINTS = 100
 
 
 # Statistical test
-STATISTICAL_FONTSIZE = 7
+STATISTICAL_FONTSIZE = 3
 SIGNIFICANT_P = 0.05
 SIGNIFICANT_P_EXTRA = 0.01
 SIGNIFICANT_ALPHA = 0.05
@@ -129,7 +129,7 @@ SIGNIFICANT_ANOVA_BAR_HEIGHT_PSE = 3.3
 
 
 # clustering
-CLUSTER_COLORLIST = ["#ff80ff", "#AEAE00", "gray", ] + list(mcolors.TABLEAU_COLORS.values())*2
+CLUSTER_COLORLIST = ["#ff80ff", "gray", "#AEAE00", ] + list(mcolors.TABLEAU_COLORS.values())*2
 
 
 # experiment related plotting params

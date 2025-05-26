@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 from src import *
 
@@ -75,8 +76,8 @@ def _plasticity_complex_visualize(feature_db: FeatureDataBase, vis_feature_names
         n_cluster = embed_uid.n_cluster
         cluster_id_dict = reverse_dict(representative_embedding.label_by_cell)
         renamed_cluster_id_dict, cluster_group_color = {}, []
-        for cluster_name, cluster_id in zip((1, 2, 3), (0, 2, 1)):
-            renamed_cluster_id_dict[f"{cluster_name}"] = cluster_id_dict[cluster_id]
+        for cluster_id in range(3):
+            renamed_cluster_id_dict[f"{cluster_id}"] = cluster_id_dict[cluster_id]
             cluster_group_color.append(CLUSTER_COLORLIST[cluster_id])
         if not feature_db.Ai148_flag:
             renamed_cluster_id_dict = {
@@ -157,7 +158,7 @@ if __name__ == "__main__":
         topk_mitten_features = all_feature_names[:top_k_num]
         print(len(topk_mitten_features), topk_mitten_features)
 
-        for exp_id in ("Calb2_SAT", "Ai148_SAT", ):  #"Ai148_PSE", "Calb2_PSE"):
+        for exp_id in ("Ai148_PSE", "Calb2_PSE", "Calb2_SAT", "Ai148_SAT", ):
             mitten = Experiment(exp_id=exp_id)
             mitten_data = mitten.image
             mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
@@ -166,15 +167,17 @@ if __name__ == "__main__":
                                                FEATURE_SELECTED_DAYS, f"Top{top_k_num}_ACC456")
             mitten_representative = load_representative_clustering(mitten_vector)
 
-            if DEBUG_FLAG:
-                _embed_quality_visualize(mitten_vector, mitten_representative, mini_flag=True)
-                continue
-            else:
-                selected_embeddings = general_select(mitten_representative, **CHOSEN_ONE[exp_id])
-                # _clustering_examples_visualization(mitten_vector, mitten_feature)
-                # _labelling_occurrence_labeling(mitten_vector)
-                _embed_quality_visualize(mitten_vector, selected_embeddings)
-                # _heatmap_by_clusters(mitten_data, mitten_feature, selected_embeddings[EmbedUID(**CHOSEN_ONE[exp_id])])
-                _plasticity_complex_visualize(mitten_feature, vis_feature_names=topk_mitten_features,
-                                              representative_clustering_by_embed_uid=selected_embeddings)
+            # comment this for efficiency
+            _embed_quality_visualize(mitten_vector, mitten_representative, mini_flag=True)
+            # comment this for efficiency
+
+            selected_embeddings = general_select(mitten_representative, **CHOSEN_ONE[exp_id])
+            for mitten_representative_embedding in selected_embeddings.values():
+                reassign_label_for_visualization(mitten_representative_embedding, mitten_feature)
+            # _clustering_examples_visualization(mitten_vector, mitten_feature)
+            # _labelling_occurrence_labeling(mitten_vector)
+            _embed_quality_visualize(mitten_vector, selected_embeddings)
+            # _heatmap_by_clusters(mitten_data, mitten_feature, selected_embeddings[EmbedUID(**CHOSEN_ONE[exp_id])])
+            _plasticity_complex_visualize(mitten_feature, vis_feature_names=topk_mitten_features,
+                                          representative_clustering_by_embed_uid=selected_embeddings)
 

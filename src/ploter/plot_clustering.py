@@ -57,11 +57,9 @@ def single_plot_embedding(ax: matplotlib.axes.Axes, single_embed: Embedding,
                 markeredgecolor='none', label=f"{CELLTYPE2STR[CellType.Calb2_Neg]} ({n_neg})"))
     else:
         cluster_cells = reverse_dict(single_embed.label_by_cell)
-        for cluster_name, cluster_id in zip((1, 2, 3), (0, 2, 1)):
-
-        # for cluster_id in sorted(np.unique(single_embed.labels)):
+        for cluster_id in sorted(np.unique(single_embed.labels)):
             label_text = f'Noise ({np.sum(single_embed.labels == -1)})' if cluster_id == -1 else \
-                f'Cluster {cluster_name} ({np.sum(single_embed.labels == cluster_id)})'
+                f'Cluster {cluster_id+1} ({np.sum(single_embed.labels == cluster_id)})'
             *_, cnt_str = calb2_pos_neg_count(cluster_cells[cluster_id], cell_types, label_flag=False)
             legend_handles.append(plt.Line2D(
                 [0], [0], marker='o', linestyle="None",

@@ -19,11 +19,12 @@ if __name__ == "__main__":
     for exp_id in ("Calb2_SAT",):
         mitten = Experiment(exp_id=exp_id)
         mitten_data = mitten.image
-        mitten_feature = FeatureDataBase("justify_feature", mitten_data)
+        mitten_feature = FeatureDataBase("mitten_feature", mitten_data)
 
         mitten_feature_names = feature_prepare(mitten_feature)
         mitten_pvalues = mitten_feature.pvalue_ttest_ind_calb2(mitten_feature_names)
         json_dump(SORTED_FEATURE_NAMES_JSON_PATH[exp_id], list(mitten_pvalues.keys()))
+        exit()
         _single_feature_visualization(mitten_feature, mitten_pvalues)
         plot_feature.plot_feature_hierarchy_structure(
             mitten_feature, save_name=path.join(_tmp_save_name, mitten_feature.name,

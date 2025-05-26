@@ -11,8 +11,8 @@ from src.data_manager import *
 
 OPTIONS_TIME_RANGE = {
     "pre-trial period": {"start_t": -2, "end_t": 0},  # s
-    "evoked-trial period": {"start_t": 0, "end_t": 2},  # s
-    # "decay-trial period": {"start_t": 1, "end_t": 2},  # s
+    "evoked-trial period": {"start_t": 0, "end_t": 1},  # s
+    "decay-trial period": {"start_t": 1, "end_t": 2},  # s
     "post-trial period": {"start_t": 2, "end_t": 4},  # s
 }
 
@@ -80,11 +80,11 @@ OPTIONS_ELEMENT_FEATURE_TRIAL_PERIOD = {
 
 
 OPTIONS_RESPONSIVE_STD_RATIO = {
-    f"{i}std": {"ratio_std": i} for i in [2, 3, 5, 10]
+    f"{i}std": {"ratio_std": i} for i in [1, 2, 3, 5, 10]
 }
 
 OPTIONS_EVENT_DETECTION_STD_RATIO = {
-    f"{i}std": {"ratio_std": i} for i in [2, 3, 5, 10]
+    f"{i}std": {"ratio_std": i} for i in [1, 2, 3, 5, 10]
 }
 
 

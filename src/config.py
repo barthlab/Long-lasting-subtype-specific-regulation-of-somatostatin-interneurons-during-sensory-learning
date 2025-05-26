@@ -97,7 +97,19 @@ CALB2_METRIC = "Calb2 Mean"
 CHOSEN_ONE = {
     "Calb2_SAT": {"n_cluster": 3, "labelling_id": 1, "embed_id": 0},
     "Ai148_SAT": {"n_cluster": 3, "labelling_id": 4, "embed_id": 0},
-    "Ai148_PSE": {"n_cluster": 3, "labelling_id": 1, "embed_id": 4},
-    "Calb2_PSE": {"n_cluster": 3, "labelling_id": 1, "embed_id": 0},
+    "Ai148_PSE": {"n_cluster": 3, "labelling_id": 2, "embed_id": 0},
+    "Calb2_PSE": {"n_cluster": 3, "labelling_id": 1, "embed_id": 1},
 }
+
+
+def reassign_label_for_visualization(single_embed, feature_db):
+    if feature_db.exp_id in ("Calb2_SAT", "Ai148_SAT"):
+        new_label_dict = {0: 0, 1: 2, 2: 1}
+    elif feature_db.exp_id == "Calb2_PSE":
+        new_label_dict = {0: 2, 1: 0, 2: 1}
+    elif feature_db.exp_id == "Ai148_PSE":
+        new_label_dict = {0: 0, 1: 1, 2: 2}
+    else:
+        raise NotImplementedError
+    single_embed.labels = np.array([new_label_dict[int(single_label)] for single_label in single_embed.labels])
 

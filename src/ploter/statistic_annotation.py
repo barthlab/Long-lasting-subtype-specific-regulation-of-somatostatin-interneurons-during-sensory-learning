@@ -115,8 +115,8 @@ def paired_ttest_with_Bonferroni_correction(ax: matplotlib.axes.Axes, data_dict:
     sorted_keys = list(data_dict[keys[0]].keys())
     raw_p_values = [
         adaptive_ttest(
-            [data_dict[keys[0]][sort_key] for sort_key in sorted_keys],
-            [data_dict[keys[i]][sort_key] for sort_key in sorted_keys],
+            [data_dict[keys[0]].get(sort_key, np.nan) for sort_key in sorted_keys],
+            [data_dict[keys[i]].get(sort_key, np.nan) for sort_key in sorted_keys],
         ).pvalue
         for i in range(1, len(keys))
     ]

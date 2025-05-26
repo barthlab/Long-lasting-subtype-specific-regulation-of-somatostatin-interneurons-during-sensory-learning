@@ -207,13 +207,15 @@ def plot_daily_bar_graph(
 
     fig, axs = plt.subplots(n_group+1, 1)
 
+    cell_peaks_list = {i: {} for i in range(n_group)}
     cell_peaks = {i: {} for i in range(n_group)}
     beh_trial_list = {}
     anti_licks_pairs = {}
 
     for col_id in range(n_days):
         for row_id, select_criteria in enumerate(img_groups):
-            cell_peaks[row_id][col_id] = defaultdict(list)
+            cell_peaks_list[row_id][col_id] = defaultdict(list)
+            cell_peaks[row_id][col_id] = {}
             all_trials = chain.from_iterable([
                 single_cs.trials for beh_mice in beh_mice_list for single_cs in general_filter(
                     general_filter(img_mice_list, mice_uid=beh_mice.mice_uid)[0].cell_sessions,
@@ -223,11 +225,11 @@ def plot_daily_bar_graph(
                 continue
 
             for single_trial in selected_trials:
-                cell_peaks[row_id][col_id][single_trial.cell_uid].append(
+                cell_peaks_list[row_id][col_id][single_trial.mice_id].append(
                     element_feature_compute_trial_period_activity_peak(single_trial, 0, EVOKED_PERIOD)
                 )
-            for single_cell_uid in cell_peaks[row_id][col_id].keys():
-                cell_peaks[row_id][col_id][single_cell_uid] = nan_mean(cell_peaks[row_id][col_id][single_cell_uid])
+            for single_mice_id in cell_peaks_list[row_id][col_id].keys():
+                cell_peaks[row_id][col_id][single_mice_id] = nan_mean(cell_peaks_list[row_id][col_id][single_mice_id])
 
         beh_trial_list[col_id] = defaultdict(list)
         anti_licks_pairs[col_id] = {}
@@ -261,7 +263,7 @@ def plot_daily_bar_graph(
                 2: cell_peaks[group_id][2],
                 4: cell_peaks[group_id][4],
                 5: cell_peaks[group_id][5],
-            }, simple_flag=False)
+            }, simple_flag=True)
         # Collect all unique cell UIDs across all days for this group
         all_cell_uids = set()
         for col_id in range(n_days):
@@ -296,9 +298,9 @@ def plot_daily_bar_graph(
 
         # Plot error bars
         ax.errorbar(x_values[0], y_values[0], yerr=y_errors[0], fmt='o-',
-                    color=color_groups[group_id], lw=1, markersize=3, capsize=1, elinewidth=1)
+                    color=color_groups[group_id], lw=1, markersize=3, capsize=1, elinewidth=0.4, capthick=0.5)
         ax.errorbar(x_values[1:], y_values[1:], yerr=y_errors[1:], fmt='o-',
-                    color=color_groups[group_id], lw=1, markersize=3, capsize=1, elinewidth=1)
+                    color=color_groups[group_id], lw=1, markersize=3, capsize=1, elinewidth=0.4, capthick=0.5)
         ax.axvspan(0.625, n_days - 0.5, lw=0, alpha=0.4, zorder=0,
                    color=OTHER_COLORS["SAT"], )
         # Plot individual cell trajectories
@@ -306,7 +308,7 @@ def plot_daily_bar_graph(
             x_traj = [point[0] for point in trajectory if not np.isnan(point[1])]
             y_traj = [point[1] for point in trajectory if not np.isnan(point[1])]
             if len(x_traj) > 1:  # Only plot if there are at least 2 points
-                # ax.plot(x_traj, y_traj, alpha=0.1, linewidth=0.5, color=color_groups[group_id], ls='--')
+                ax.plot(x_traj[1:], y_traj[1:], alpha=0.3, linewidth=0.5, color=color_groups[group_id], ls='--')
                 pass
         # ax.set_xlabel('Day relative to')
         # if group_id == int((n_group-1)/2):
@@ -344,7 +346,7 @@ def plot_daily_bar_graph(
             # paired_ttest_with_Bonferroni_correction(
             #     ax, {
             #         col_id: {mice_uid: anti_licks_pairs[col_id][mice_uid][0] for mice_uid in anti_licks_pairs[col_id].keys()},
-            #         col_id+0.25: {mice_uid: anti_licks_pairs[col_id][mice_uid][1] for mice_uid in anti_licks_pairs[col_id].keys()},
+            #         col_id+0.45: {mice_uid: anti_licks_pairs[col_id][mice_uid][1] for mice_uid in anti_licks_pairs[col_id].keys()},
             #     }, simple_flag=False)
 
             go_values.append(np.nanmean(go_daily) if go_daily else np.nan)
@@ -374,10 +376,10 @@ def plot_daily_bar_graph(
     for day_id in range(n_days):
         ax.errorbar(x_go[day_id], go_values[day_id], yerr=go_errors[day_id], fmt='o-',
                     color=BEHAVIOR_TRIAL_TYPE2COLOR[BehaviorTrialType.Go],
-                    markersize=3, capsize=1, elinewidth=1, label='Go')
+                    markersize=3, capsize=1, elinewidth=0.4, capthick=0.5, label='Go')
         ax.errorbar(x_nogo[day_id], nogo_values[day_id], yerr=nogo_errors[day_id], fmt='o-',
                     color=BEHAVIOR_TRIAL_TYPE2COLOR[BehaviorTrialType.NoGo],
-                    markersize=3, capsize=1, elinewidth=1, label='NoGo')
+                    markersize=3, capsize=1, elinewidth=0.4, capthick=0.5, label='NoGo')
         ax.plot([x_go[day_id], x_nogo[day_id]], [go_values[day_id], nogo_values[day_id]],
                 color='black', lw=1, alpha=0.8)
 
