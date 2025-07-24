@@ -1,0 +1,31 @@
+Calb2_SAT
+OHC_5F: M081
+ONA_7F: M085
+OXA_1F: M087
+OHE_6F: M088
+PNI_5F: M099
+PVT_5M: M105
+PVT_6F: M106
+M17 - M86: Puff/Blank
+After M86: real/fake
+
+lost data:
+M087 - Matt FOV2 FOV3 FOV4: SAT9 SAT10
+M088 - Matt FOV1 FOV2 FOV3: SAT7
+M017 FOV1: ACC1
+
+Missing Trial Labels
+M085 FOV4 SAT1 last 3 trials
+
+M087, M088: Matt's recordings
+
+
+Calb2_PSE
+RDZ4F: M201
+RDZ7F: M202
+RJR1M: M203
+RLK1M: M204
+RMB8F: M205
+RTN2F: M206
+
+data status see: Calcium imaging/Calb2_PSE/Calb2_PSE_data_status.xlsx
